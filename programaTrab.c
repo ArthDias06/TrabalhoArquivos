@@ -58,10 +58,10 @@ bool createTable(char* csv, char* bin){
     fwrite("", sizeof(char), 1, fbin);
     int t[4] = {0};
     fwrite(t, sizeof(int), 4, fbin);
-    fwrite("\n", sizeof(char), 1, fbin);
     //Lê cada letra do documento
     int ch = 0;
     int cont = 0;
+    int contByte = 0; //Conta quantos bytes foram passados para completar com lixo depois
 
 
     while(ch != EOF){
@@ -72,12 +72,14 @@ bool createTable(char* csv, char* bin){
                 break;
             case 1:
                 nomeEst[i][cont] = ch!=',' ? ch : '\0';
+                contByte++;
                 break;
             case 2:
                 codLin[cont] = ch!=',' ? ch : '\0';
                 break;
             case 3:
                 nomeLin[cont] = ch!=',' ? ch : '\0';
+                contByte++;
                 break;
             case 4:
                 codProx[i][cont] = ch!=',' ? ch : '\0';
@@ -100,11 +102,13 @@ bool createTable(char* csv, char* bin){
             }
             continue;
         }
+        contByte -= 2;//Retira os \0 das duas strings
         printf("%s %s %s %s %s %s %s %s\n", codEst[i], nomeEst[i], codLin, nomeLin, codProx[i], distanciaProx, codLinInteg, codEstInteg);
         cont = 0;
         contVariavel = 0;
         
-
+        contByte+=37;
+        contByte = 80 - contByte;
         //atoi de string vazia retorna 0
         registro.removido = '0';
         registro.proximo = -1;
@@ -160,6 +164,14 @@ bool createTable(char* csv, char* bin){
             }
         }
         i++;
+        if(contByte > 0){
+            char lixo[contByte];
+            for(int j = 0; j < contByte; j++){
+                lixo[j] = '$';
+            }
+            fwrite(lixo, sizeof(char), contByte, fbin);
+        }
+        contByte = 0;
     }
     for(int j = 0; j < i; j++){
         free(nomeEst[j]);
