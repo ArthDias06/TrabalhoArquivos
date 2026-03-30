@@ -57,8 +57,7 @@ void BinarioNaTela(char *arquivo) {
 void ScanQuoteString(char *str) {
     char R;
 
-    while ((R = getchar()) != EOF && isspace(R))
-        ; // ignorar espaços, \r, \n...
+    while ((R = getchar()) != EOF && isspace(R)); // ignorar espaços, \r, \n...
 
     if (R == 'N' || R == 'n') { // campo NULO
         getchar();
