@@ -112,8 +112,7 @@ int createTable(char* csv, char* bin, char**** matrizes){
             }
             continue;
         }
-        printf("%s %s %s %s %s %s %s %s", (*matrizes)[1][i], (*matrizes)[0][i], codLin, nomeLin, (*matrizes)[2][i], distanciaProx, codLinInteg, codEstInteg);
-        printf(" %d\n", cabecalho.proxRRN);
+        printf("%s %s %s %s %s %s %s %s\n", (*matrizes)[1][i], (*matrizes)[0][i], codLin, nomeLin, (*matrizes)[2][i], distanciaProx, codLinInteg, codEstInteg);
         cont = 0;
         contVariavel = 0;
         //atoi de string vazia retorna 0
@@ -276,6 +275,7 @@ void ScanQuoteString(char *str) {
         str[0] = R;
         scanf("%s", &str[1]);
     } else { // EOF
+        printf("%s\n", str);
         strcpy(str, "");
     }
 }
@@ -284,7 +284,7 @@ void ScanQuoteString(char *str) {
 
 
 
-void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int nroLinhas){
+void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinhas){
     FILE *fbin;
     if(arquivoBin == NULL || !(fbin = fopen(arquivoBin, "r+b"))){
         printf("Erro no Insert!");
@@ -308,42 +308,41 @@ void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int nroLinhas
         }else{
             proxInsercao = cabecalho.proxRRN;
         }
-        scanf("%s %s %s %s %s %s %s %s",codEstacao, nomeEstacao, codLinha, nomeLinha, codProxEstacao, distProxEstacao, codLinhaIntegra, codEstIntegra);
         ScanQuoteString(codEstacao);
         ScanQuoteString(nomeEstacao);
+        ScanQuoteString(codLinha);
+        ScanQuoteString(nomeLinha);
+        ScanQuoteString(codProxEstacao);
+        ScanQuoteString(distProxEstacao);
+        ScanQuoteString(codLinhaIntegra);
+        ScanQuoteString(codEstIntegra);
         if(!strcmp(codEstacao, "") || !strcmp(nomeEstacao, "")){
-            printf("Os 2 primeiros campos não podem ser nulos!");
+            printf("Os 2 primeiros campos não podem ser nulos!\n");
             continue;
         }
         registro.codEstacao = atoi(codEstacao);
         strcpy(registro.nomeEstacao, nomeEstacao);
-        ScanQuoteString(nomeLinha);
         strcpy(registro.nomeLinha, nomeLinha);
-        ScanQuoteString(codLinha);
         if(!strcmp("", codLinha)){
             registro.codLinha = -1;
         }else{
             registro.codLinha = atoi(codLinha);
         }
-        ScanQuoteString(codProxEstacao);
         if(!strcmp("", codProxEstacao)){
             registro.codProxEstacao = -1;
         }else{
             registro.codProxEstacao = atoi(codProxEstacao);
         }
-        ScanQuoteString(distProxEstacao);
         if(!strcmp("", distProxEstacao)){
             registro.distProxEstacao = -1;
         }else{
             registro.distProxEstacao = atoi(distProxEstacao);
         }
-        ScanQuoteString(codLinhaIntegra);
         if(!strcmp("", codLinhaIntegra)){
             registro.codLinhaIntegra = -1;
         }else{
             registro.codLinhaIntegra = atoi(codLinhaIntegra);
         }
-        ScanQuoteString(codEstIntegra);
         if(!strcmp("", codEstIntegra)){
             registro.codEstIntegra = -1;
         }else{
@@ -356,13 +355,13 @@ void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int nroLinhas
 
         cabecalho.nroEstacoes++;cabecalho.nroParesEstacao++;
         //Ver se precisa aumentar nroEstacoes e nroParesEstacao
-        for(int i = 0; i < nroLinhas; i++){
+        for(int i = 0; i < *nroLinhas; i++){
             if(!strcmp(matrizes[0][i], nomeEstacao)){
                 cabecalho.nroEstacoes--;
                 break;
             }
         }
-        for(int i = 0; i < nroLinhas; i++){
+        for(int i = 0; i < *nroLinhas; i++){
             if(!strcmp(matrizes[1][i], codEstacao) && !strcmp(matrizes[2][i], codProxEstacao)){
                 cabecalho.nroParesEstacao--;
                 break;
@@ -398,21 +397,20 @@ void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int nroLinhas
             cabecalho.topo = proxInsercao;
         }
 
-
-        if(nroLinhas% 200 == 0 && nroLinhas > 0){
-            (*matrizes)[0] = realloc((*matrizes)[0], sizeof(char*) * (nroLinhas+200));
-            (*matrizes)[1] = realloc((*matrizes)[1], sizeof(char*) * (nroLinhas+200));
-            (*matrizes)[2] = realloc((*matrizes)[2], sizeof(char*) * (nroLinhas+200));
-            for(int j = nroLinhas; j < nroLinhas+200; j++){
+        if((*nroLinhas)% 200 == 0 && (*nroLinhas) > 0){
+            matrizes[0] = realloc(matrizes[0], sizeof(char*) * ((*nroLinhas)+200));
+            matrizes[1] = realloc(matrizes[1], sizeof(char*) * ((*nroLinhas)+200));
+            matrizes[2] = realloc(matrizes[2], sizeof(char*) * ((*nroLinhas)+200));
+            for(int j = *nroLinhas; j < (*nroLinhas)+200; j++){
                 matrizes[0][j] = malloc(sizeof(char) * 44);
                 matrizes[1][j] = malloc(sizeof(char) * 11);
                 matrizes[2][j] = malloc(sizeof(char) * 11);
             }
         }
-        strcpy(matrizes[0][nroLinhas], nomeEstacao);
-        strcpy(matrizes[1][nroLinhas], codEstacao);
-        strcpy(matrizes[2][nroLinhas], codProxEstacao);
-        nroLinhas++;
+        strcpy(matrizes[0][*nroLinhas], nomeEstacao);
+        strcpy(matrizes[1][*nroLinhas], codEstacao);
+        strcpy(matrizes[2][*nroLinhas], codProxEstacao);
+        (*nroLinhas)++;
     }
     cabecalho.status = '1';
     fseek(fbin, 0, SEEK_SET);
@@ -446,8 +444,8 @@ int main(){
                 break;
             case 5:
                 int n;
-                scanf("%d", &n);
-                insertInto(arquivoBin, n, matrizes, nroLinhas);
+                scanf("%s %d", arquivoBin, &n);
+                insertInto(arquivoBin, n, matrizes, &nroLinhas);
                 break;
         }
     }
