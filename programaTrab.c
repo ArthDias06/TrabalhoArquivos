@@ -383,6 +383,12 @@ void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinha
         fwrite(registro.nomeEstacao,sizeof(char),strlen(registro.nomeEstacao),fbin);
         fwrite(&registro.tamNomeLinha,sizeof(int),1,fbin);
         fwrite(registro.nomeLinha,sizeof(char),strlen(registro.nomeLinha),fbin);
+        int contByte = 43 - strlen(registro.nomeEstacao) - strlen(registro.nomeLinha);
+        char lixo[contByte];
+        for(int i = 0; i < contByte; i++){
+            lixo[i] = '$';
+        }
+        fwrite(lixo, sizeof(char), contByte, fbin);
 
 
         if(cabecalho.proxRRN == proxInsercao){
