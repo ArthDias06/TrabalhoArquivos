@@ -294,7 +294,6 @@ void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinha
     REGISTRO registro;
     CABECALHO cabecalho;
     fseek(fbin,0,SEEK_SET);
-    cabecalho.status = '0';
     int proxInsercao;
     //Registro aberto para escrita deve ter status como 0 - inconsistente
     fwrite(&cabecalho.status, sizeof(char), 1, fbin);
@@ -353,7 +352,8 @@ void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinha
         registro.removido = '0';
         registro.proximo = -1;
 
-        cabecalho.nroEstacoes++;cabecalho.nroParesEstacao++;
+        cabecalho.nroEstacoes++;
+        cabecalho.nroParesEstacao++;
         //Ver se precisa aumentar nroEstacoes e nroParesEstacao
         for(int i = 0; i < *nroLinhas; i++){
             if(!strcmp(matrizes[0][i], nomeEstacao)){
@@ -428,6 +428,63 @@ void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinha
     fclose(fbin);
 }
 
+void selectFrom(char *arquivoBin) {
+    FILE *fbin;
+    if(arquivoBin == NULL || !(fbin = fopen(arquivoBin, "rb"))){
+        printf("Erro no select!");
+        return;
+    }
+    fseek(fbin,17,SEEK_SET);
+
+    int cont = 0, codEstacao, codLinha, codProxEstacao, distProxEstacao, codLinhaIntegra, codEstIntegra, tamNomeEstacao, tamNomeLinha;
+    char removido, *nomeEstacao, *nomeLinha;
+
+    while(fread(&removido, 1, 1, fbin) == 1){
+        if(removido == '1') {
+            fseek(fbin,79,SEEK_CUR);
+            continue;
+        }
+        fseek(fbin,4,SEEK_CUR);
+        fread(&codEstacao,4,1,fbin);
+        fread(&codLinha,4,1,fbin);
+        fread(&codProxEstacao,4,1,fbin);
+        fread(&distProxEstacao,4,1,fbin);
+        fread(&codLinhaIntegra,4,1,fbin);
+        fread(&codEstIntegra,4,1,fbin);
+        fread(&tamNomeEstacao,4,1,fbin);
+
+        
+        nomeEstacao = malloc(tamNomeEstacao+1);
+        fread(nomeEstacao,tamNomeEstacao,1,fbin);
+        nomeEstacao[tamNomeEstacao] = '\0';
+        fread(&tamNomeLinha,4,1,fbin);
+        if(tamNomeLinha == 0) {
+            nomeLinha = NULL;
+        } else {
+            nomeLinha = malloc(tamNomeLinha+1);
+            fread(nomeLinha,tamNomeLinha,1,fbin);
+            nomeLinha[tamNomeLinha] = '\0';
+        }
+
+        printf("%d %s %d %s %d %d %d %d\n", codEstacao, nomeEstacao, codLinha, nomeLinha, codProxEstacao, distProxEstacao, codLinhaIntegra, codEstIntegra);
+
+        if(nomeEstacao) {
+            free(nomeEstacao);
+        }
+        if(nomeLinha) {
+            free(nomeLinha);
+        }
+        // int lixo = 43-tamNomeEstacao-tamNomeLinha;
+        // if(lixo>0) {
+        //     fseek(fbin,lixo,SEEK_CUR);
+        // }
+
+        ++cont;
+        fseek(fbin, 17 + (cont * 80), SEEK_SET);
+    }
+    fclose(fbin);
+
+}
 
 
 
@@ -447,6 +504,10 @@ int main(){
                 scanf("%100s %100s", arquivoCSV, arquivoBin);
                 nroLinhas = createTable(arquivoCSV, arquivoBin, &matrizes);
                 BinarioNaTela(arquivoBin);
+                break;
+            case 2:
+                scanf("%100s",arquivoBin);
+                selectFrom(arquivoBin);
                 break;
             case 5:
                 int n;
