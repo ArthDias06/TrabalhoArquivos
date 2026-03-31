@@ -428,65 +428,7 @@ void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinha
     fclose(fbin);
 }
 
-void selectFrom(char *arquivoBin) {
-    FILE *fbin;
-    if(arquivoBin == NULL || !(fbin = fopen(arquivoBin, "rb"))){
-        printf("Erro no select!");
-        return;
-    }
-    fseek(fbin,17,SEEK_SET);
-
-    int cont = 0, codEstacao, codLinha, codProxEstacao, distProxEstacao, codLinhaIntegra, codEstIntegra, tamNomeEstacao, tamNomeLinha;
-    char removido, *nomeEstacao, *nomeLinha;
-
-    while(fread(&removido, 1, 1, fbin) == 1){
-        if(removido == '1') {
-            fseek(fbin,79,SEEK_CUR);
-            continue;
-        }
-        fseek(fbin,4,SEEK_CUR);
-        fread(&codEstacao,4,1,fbin);
-        fread(&codLinha,4,1,fbin);
-        fread(&codProxEstacao,4,1,fbin);
-        fread(&distProxEstacao,4,1,fbin);
-        fread(&codLinhaIntegra,4,1,fbin);
-        fread(&codEstIntegra,4,1,fbin);
-        fread(&tamNomeEstacao,4,1,fbin);
-
-        
-        nomeEstacao = malloc(tamNomeEstacao+1);
-        fread(nomeEstacao,tamNomeEstacao,1,fbin);
-        nomeEstacao[tamNomeEstacao] = '\0';
-        fread(&tamNomeLinha,4,1,fbin);
-        if(tamNomeLinha == 0) {
-            nomeLinha = NULL;
-        } else {
-            nomeLinha = malloc(tamNomeLinha+1);
-            fread(nomeLinha,tamNomeLinha,1,fbin);
-            nomeLinha[tamNomeLinha] = '\0';
-        }
-
-        printf("%d %s %d %s %d %d %d %d\n", codEstacao, nomeEstacao, codLinha, nomeLinha, codProxEstacao, distProxEstacao, codLinhaIntegra, codEstIntegra);
-
-        if(nomeEstacao) {
-            free(nomeEstacao);
-        }
-        if(nomeLinha) {
-            free(nomeLinha);
-        }
-        // int lixo = 43-tamNomeEstacao-tamNomeLinha;
-        // if(lixo>0) {
-        //     fseek(fbin,lixo,SEEK_CUR);
-        // }
-
-        ++cont;
-        fseek(fbin, 17 + (cont * 80), SEEK_SET);
-    }
-    fclose(fbin);
-
-}
-
-
+void selectFromWhere(char *, int, bool);
 
 
 
@@ -507,7 +449,12 @@ int main(){
                 break;
             case 2:
                 scanf("%100s",arquivoBin);
-                selectFrom(arquivoBin);
+                selectFromWhere(arquivoBin,1,false);
+                break;
+            case 3:
+                int n0;
+                scanf("%100s %d",arquivoBin,&n0);
+                selectFromWhere(arquivoBin,n0,true);
                 break;
             case 5:
                 int n;
@@ -527,3 +474,112 @@ int main(){
     }
     free(matrizes);
 }
+
+
+void selectFromWhere(char *arquivoBin, int quantBuscas, bool temWhere) {
+    FILE *fbin;
+    if(arquivoBin == NULL || !(fbin = fopen(arquivoBin, "rb"))){
+        printf("Erro no select!");
+        return;
+    }
+    for(int i = 0; i<quantBuscas; ++i) {
+        int quantAnds = 1;
+        if(temWhere) {
+            scanf("%d", &quantAnds);
+        }
+        char *condicoes[quantAnds][2];
+        if(temWhere) {
+            for(int j = 0; j<quantAnds; ++j) {
+                char nomeCampo[23];
+                scanf(" %s", nomeCampo);
+                if(strcmp(nomeCampo, "nomeEstacao")==0) {
+                    condicoes[j][0] = (char *)0;
+                } else if(strcmp(nomeCampo, "nomeLinha")==0) {
+                    condicoes[j][0] = (char *)1;
+                } else if(strcmp(nomeCampo, "codEstacao")==0) {
+                    condicoes[j][0] = (char *)2;
+                } else if(strcmp(nomeCampo, "codLinha")==0) {
+                    condicoes[j][0] = (char *)3;
+                } else if(strcmp(nomeCampo, "codProxEstacao")==0) {
+                    condicoes[j][0] = (char *)4;
+                } else if(strcmp(nomeCampo, "distProxEstacao")==0) {
+                    condicoes[j][0] = (char *)5;
+                } else if(strcmp(nomeCampo, "codLinhaIntegra")==0) {
+                    condicoes[j][0] = (char *)6;
+                } else if(strcmp(nomeCampo, "codEstIntegra")==0) {
+                    condicoes[j][0] = (char *)7;
+                }
+                char valorCampo[46];
+                ScanQuoteString(valorCampo);
+                condicoes[j][1] = malloc(strlen(valorCampo)+1);
+                strcpy(condicoes[j][1], valorCampo);
+            }
+        }
+        fseek(fbin,17,SEEK_SET);
+
+        int cont = 0;
+        char removido;
+        while(fread(&removido, 1, 1, fbin) == 1){
+            if(removido == '1') {
+                fseek(fbin,79,SEEK_CUR);
+                continue;
+            }
+            char *nomeCampos[8]; // de 0 a 7: *nomeEstacao, *nomeLinha, *codEstacao, *codLinha, *codProxEstacao, *distProxEstacao, *codLinhaIntegra, *codEstIntegra;
+            
+            fseek(fbin,4,SEEK_CUR);
+            int temp;
+            for(int j = 2; j<8; ++j) {
+                fread(&temp, 4, 1, fbin);
+                nomeCampos[j] = malloc(11);
+                if(temp == -1) { 
+                    strcpy(nomeCampos[j], "NULO");
+                } else {
+                    sprintf(nomeCampos[j], "%d", temp);
+                }
+            }
+            
+            int tamNomeEstacao, tamNomeLinha;
+            fread(&tamNomeEstacao, 4, 1, fbin);
+            nomeCampos[0] = malloc(tamNomeEstacao+1);
+            fread(nomeCampos[0], tamNomeEstacao, 1, fbin);
+            nomeCampos[0][tamNomeEstacao] = '\0';
+            fread(&tamNomeLinha, 4, 1, fbin);
+            if(tamNomeLinha == 0) {
+                nomeCampos[1] = "NULO";
+            } else {
+                nomeCampos[1] = malloc(tamNomeLinha+1);
+                fread(nomeCampos[1], tamNomeLinha, 1, fbin);
+                nomeCampos[1][tamNomeLinha] = '\0';
+            }
+            bool ok = 1;
+            if(temWhere) {
+                for(int j=0; j<quantAnds && ok; ++j) {
+                    int op= (int)(intptr_t)condicoes[j][0];
+                    if(strcmp(nomeCampos[op],condicoes[j][1]) != 0) {
+                        ok = 0;
+                    }
+
+                }
+            }
+
+            if(ok) {
+                printf("%s %s %s %s %s %s %s %s\n", nomeCampos[2], nomeCampos[0], nomeCampos[3], nomeCampos[1], nomeCampos[4], nomeCampos[5], nomeCampos[6], nomeCampos[7]);
+            }
+            
+            for(int j = 0; j<8; ++j) {
+                free(nomeCampos[j]);
+            }
+
+            ++cont;
+            fseek(fbin, 17 + (cont * 80), SEEK_SET);
+        }
+        if(temWhere) {
+            for(int j=0; j<quantAnds; ++j) {
+                free(condicoes[j][1]);
+            }
+        }
+    }
+    fclose(fbin);
+
+}
+
