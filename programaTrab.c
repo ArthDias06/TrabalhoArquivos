@@ -115,7 +115,6 @@ int createTable(char* csv, char* bin, char**** matrizes){
         printf("%s %s %s %s %s %s %s %s\n", (*matrizes)[1][i], (*matrizes)[0][i], codLin, nomeLin, (*matrizes)[2][i], distanciaProx, codLinInteg, codEstInteg);
         cont = 0;
         contVariavel = 0;
-        //atoi de string vazia retorna 0
         registro.removido = '0';
         registro.proximo = -1;
         if(!strlen((*matrizes)[1][i])){
@@ -152,7 +151,6 @@ int createTable(char* csv, char* bin, char**** matrizes){
         registro.tamNomeLinha = strlen(nomeLin);
         strcpy(registro.nomeEstacao, (*matrizes)[0][i]);
         strcpy(registro.nomeLinha, nomeLin);
-
         fwrite(&registro.removido, sizeof(char), 1, fbin);
         fwrite(&registro.proximo, sizeof(int), 1, fbin);
         fwrite(&registro.codEstacao, sizeof(int), 1, fbin);
@@ -165,9 +163,16 @@ int createTable(char* csv, char* bin, char**** matrizes){
         fwrite(registro.nomeEstacao, sizeof(char), strlen(registro.nomeEstacao), fbin);
         fwrite(&registro.tamNomeLinha, sizeof(int), 1, fbin);
         fwrite(registro.nomeLinha, sizeof(char), strlen(registro.nomeLinha), fbin);
+        //Espaço para colocar lixo('$')
+        contByte = 43 - strlen(registro.nomeEstacao) - strlen(registro.nomeLinha);
+        if(contByte > 0){
+            char lixo[contByte];
+            for(int j = 0; j < contByte; j++){
+                lixo[j] = '$';
+            }
+            fwrite(lixo, sizeof(char), contByte, fbin);
+        }
         cabecalho.proxRRN++;
-
-
 
         cabecalho.nroEstacoes++;cabecalho.nroParesEstacao++;
         for(int j = 0; j < i; j++){
@@ -194,15 +199,6 @@ int createTable(char* csv, char* bin, char**** matrizes){
             }
         }
         i++;
-        //Espaço para colocar lixo('$')
-        contByte = 43 - strlen(registro.nomeEstacao) - strlen(registro.nomeLinha);
-        if(contByte > 0){
-            char lixo[contByte];
-            for(int j = 0; j < contByte; j++){
-                lixo[j] = '$';
-            }
-            fwrite(lixo, sizeof(char), contByte, fbin);
-        }
     }
 
     cabecalho.status = '1';
@@ -320,6 +316,7 @@ void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinha
             printf("Os 2 primeiros campos não podem ser nulos!\n");
             continue;
         }
+        printf("%s %s %s %s %s %s %s %s\n", codEstacao, nomeEstacao, codLinha, nomeLinha, codProxEstacao, distProxEstacao, codLinhaIntegra, codEstIntegra);
         registro.codEstacao = atoi(codEstacao);
         strcpy(registro.nomeEstacao, nomeEstacao);
         strcpy(registro.nomeLinha, nomeLinha);
@@ -352,25 +349,8 @@ void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinha
         registro.tamNomeLinha = strlen(nomeLinha);
         registro.removido = '0';
         registro.proximo = -1;
-
-        cabecalho.nroEstacoes++;cabecalho.nroParesEstacao++;
-        //Ver se precisa aumentar nroEstacoes e nroParesEstacao
-        for(int i = 0; i < *nroLinhas; i++){
-            if(!strcmp(matrizes[0][i], nomeEstacao)){
-                cabecalho.nroEstacoes--;
-                break;
-            }
-        }
-        for(int i = 0; i < *nroLinhas; i++){
-            if(!strcmp(matrizes[1][i], codEstacao) && !strcmp(matrizes[2][i], codProxEstacao)){
-                cabecalho.nroParesEstacao--;
-                break;
-            }
-        }
-
-
-        //Escrita no arquivo
-        fseek(fbin, proxInsercao*tamRegistro, SEEK_SET);
+        
+        fseek(fbin, proxInsercao*tamRegistro+17, SEEK_SET);
         fwrite(&registro.removido, sizeof(char),1,fbin);
         fwrite(&registro.proximo,sizeof(int),1,fbin);
         fwrite(&registro.codEstacao,sizeof(int),1,fbin);
@@ -385,11 +365,26 @@ void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinha
         fwrite(registro.nomeLinha,sizeof(char),strlen(registro.nomeLinha),fbin);
         int contByte = 43 - strlen(registro.nomeEstacao) - strlen(registro.nomeLinha);
         char lixo[contByte];
-        for(int i = 0; i < contByte; i++){
-            lixo[i] = '$';
+        for(int j = 0; j < contByte; j++){
+            lixo[j] = '$';
         }
         fwrite(lixo, sizeof(char), contByte, fbin);
 
+
+        fseek(fbin, -75, SEEK_CUR);
+        fread(&registro.codEstacao,sizeof(int),1,fbin);
+        fread(&registro.codLinha,sizeof(int),1,fbin);
+        fread(&registro.codProxEstacao,sizeof(int),1,fbin);
+        fread(&registro.distProxEstacao,sizeof(int),1,fbin);
+        fread(&registro.codLinhaIntegra,sizeof(int),1,fbin);
+        fread(&registro.codEstIntegra,sizeof(int),1,fbin);
+        fread(&registro.tamNomeEstacao,sizeof(int),1,fbin);
+        fread(registro.nomeEstacao,sizeof(char),strlen(registro.nomeEstacao),fbin);
+        registro.nomeEstacao[registro.tamNomeEstacao] = '\0';
+        fread(&registro.tamNomeLinha,sizeof(int),1,fbin);
+        fread(registro.nomeLinha,sizeof(char),strlen(registro.nomeLinha),fbin);
+        registro.nomeLinha[strlen(registro.nomeLinha)] = '\0';
+        printf("%d %s %d %s %d %d %d %d %d %d\n", registro.codEstacao, registro.nomeEstacao, registro.codLinha, registro.nomeLinha, registro.codProxEstacao, registro.distProxEstacao, registro.codLinhaIntegra, registro.codEstIntegra, registro.tamNomeEstacao, registro.tamNomeLinha);
 
         if(cabecalho.proxRRN == proxInsercao){
             cabecalho.proxRRN++;
@@ -416,6 +411,22 @@ void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinha
         strcpy(matrizes[0][*nroLinhas], nomeEstacao);
         strcpy(matrizes[1][*nroLinhas], codEstacao);
         strcpy(matrizes[2][*nroLinhas], codProxEstacao);
+
+         cabecalho.nroEstacoes++;cabecalho.nroParesEstacao++;
+        //Ver se precisa aumentar nroEstacoes e nroParesEstacao
+        for(int j = 0; j < *nroLinhas; j++){
+            if(!strcmp(matrizes[0][j], nomeEstacao)){
+                cabecalho.nroEstacoes--;
+                break;
+            }
+        }
+        for(int j = 0; j < *nroLinhas; j++){
+            if(!strcmp(matrizes[1][j], codEstacao) && !strcmp(matrizes[2][i], codProxEstacao)){
+                cabecalho.nroParesEstacao--;
+                break;
+            }
+        }
+        
         (*nroLinhas)++;
     }
     cabecalho.status = '1';
