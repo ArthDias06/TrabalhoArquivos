@@ -370,7 +370,7 @@ void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinha
 
 
         //Escrita no arquivo
-        fseek(fbin, proxInsercao*tamRegistro, SEEK_SET);
+        fseek(fbin, proxInsercao*tamRegistro+17, SEEK_SET);
         fwrite(&registro.removido, sizeof(char),1,fbin);
         fwrite(&registro.proximo,sizeof(int),1,fbin);
         fwrite(&registro.codEstacao,sizeof(int),1,fbin);
@@ -458,7 +458,7 @@ int main(){
                 break;
             case 5:
                 int n;
-                scanf("%s %d", arquivoBin, &n);
+                scanf("%100s %d", arquivoBin, &n);
                 insertInto(arquivoBin, n, matrizes, &nroLinhas);
                 break;
         }

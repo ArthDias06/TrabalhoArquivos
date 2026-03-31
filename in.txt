@@ -1,3 +1,4 @@
 1 estacoes.csv result.bin
 5 result.bin
 1 201 "Estacao" 700 "Linha" 40 NULO NULO NULO
+2 result.bin
