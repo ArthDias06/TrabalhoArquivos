@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <stdint.h>
 
 typedef struct cabecalho{
     char status;
@@ -302,11 +303,7 @@ void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinha
     fread(&cabecalho.nroEstacoes, sizeof(int), 1,fbin);
     fread(&cabecalho.nroParesEstacao, sizeof(int), 1,fbin);
     for(int i = 0; i < nroInsert; i++){
-        if(cabecalho.topo != -1){
-            proxInsercao = cabecalho.topo;
-        }else{
-            proxInsercao = cabecalho.proxRRN;
-        }
+        proxInsercao = cabecalho.topo != -1 ? cabecalho.topo : cabecalho.proxRRN;
         ScanQuoteString(codEstacao);
         ScanQuoteString(nomeEstacao);
         ScanQuoteString(codLinha);
@@ -430,13 +427,198 @@ void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinha
 
 void selectFromWhere(char *, int, bool);
 
+void update(char *arquivoBin, int nroUpdate, char ***matriz, int* nroLinhas){
+    FILE *fbin;
+    if(arquivoBin == NULL || !(fbin = fopen(arquivoBin, "r+b"))){
+        printf("Erro no Update!");
+        return;
+    }
+
+    CABECALHO cabecalho;
+    fseek(fbin,0,SEEK_SET);
+    //Registro aberto para escrita deve ter status como 0 - inconsistente
+    fwrite(&cabecalho.status, sizeof(char), 1, fbin);
+    fseek(fbin, 8, SEEK_CUR);
+    fread(&cabecalho.nroEstacoes, sizeof(int), 1,fbin);
+    fread(&cabecalho.nroParesEstacao, sizeof(int), 1,fbin);
+    int cont = 0;
+    for(int i = 0; i<nroUpdate; ++i) {
+        int quantAnds = 1;
+        scanf("%d", &quantAnds);
+        char *condicoes[quantAnds][2];
+        for(int j = 0; j<quantAnds; ++j) {
+            char nomeCampo[23];
+            scanf(" %s", nomeCampo);
+            if(strcmp(nomeCampo, "nomeEstacao")==0) {
+                condicoes[j][0] = (char *)0;
+            } else if(strcmp(nomeCampo, "nomeLinha")==0) {
+                condicoes[j][0] = (char *)1;
+            } else if(strcmp(nomeCampo, "codEstacao")==0) {
+                condicoes[j][0] = (char *)2;
+            } else if(strcmp(nomeCampo, "codLinha")==0) {
+                condicoes[j][0] = (char *)3;
+            } else if(strcmp(nomeCampo, "codProxEstacao")==0) {
+                condicoes[j][0] = (char *)4;
+            } else if(strcmp(nomeCampo, "distProxEstacao")==0) {
+                condicoes[j][0] = (char *)5;
+            } else if(strcmp(nomeCampo, "codLinhaIntegra")==0) {
+                condicoes[j][0] = (char *)6;
+            } else if(strcmp(nomeCampo, "codEstIntegra")==0) {
+                condicoes[j][0] = (char *)7;
+            }
+            char valorCampo[46];
+            ScanQuoteString(valorCampo);
+            condicoes[j][1] = malloc(strlen(valorCampo)+1);
+            strcpy(condicoes[j][1], valorCampo);
+        }
+        fseek(fbin,17,SEEK_SET);
+
+        char removido;
+        while(fread(&removido, 1, 1, fbin) == 1){
+            if(removido == '1') {
+                fseek(fbin,79,SEEK_CUR);
+                continue;
+            }
+            char *nomeCampos[8]; // de 0 a 7: *nomeEstacao, *nomeLinha, *codEstacao, *codLinha, *codProxEstacao, *distProxEstacao, *codLinhaIntegra, *codEstIntegra;
+            
+            fseek(fbin,4,SEEK_CUR);
+            int temp;
+            for(int j = 2; j<8; ++j) {
+                fread(&temp, 4, 1, fbin);
+                nomeCampos[j] = malloc(11);
+                if(temp == -1) { 
+                    strcpy(nomeCampos[j], "NULO");
+                } else {
+                    sprintf(nomeCampos[j], "%d", temp);
+                }
+            }
+            
+            int tamNomeEstacao, tamNomeLinha;
+            fread(&tamNomeEstacao, 4, 1, fbin);
+            nomeCampos[0] = malloc(tamNomeEstacao+1);
+            fread(nomeCampos[0], tamNomeEstacao, 1, fbin);
+            nomeCampos[0][tamNomeEstacao] = '\0';
+            fread(&tamNomeLinha, 4, 1, fbin);
+            if(tamNomeLinha == 0) {
+                nomeCampos[1] = "NULO";
+            } else {
+                nomeCampos[1] = malloc(tamNomeLinha+1);
+                fread(nomeCampos[1], tamNomeLinha, 1, fbin);
+                nomeCampos[1][tamNomeLinha] = '\0';
+            }
+            bool ok = 1;
+            for(int j=0; j<quantAnds && ok; ++j) {
+                int op= (int)(intptr_t)condicoes[j][0];
+                if(strcmp(nomeCampos[op],condicoes[j][1]) != 0) {
+                    ok = 0;
+                }
+            }
+            if(ok){
+                int quantAndsUpdate;
+                scanf("%d", &quantAndsUpdate);
+                for(int j = 0; j<quantAndsUpdate; ++j) {
+                    char nomeCampo[23];
+                    scanf(" %s", nomeCampo);
+                    char valorCampo[46];
+                    ScanQuoteString(valorCampo);
+                    if(strcmp(nomeCampo, "nomeEstacao")==0) {
+                        tamNomeEstacao = strlen(valorCampo);
+                        strcpy(nomeCampos[0], valorCampo);
+                        cabecalho.nroEstacoes++;
+                        for(int k = 0; k < *nroLinhas; k++){
+                            if(!strcmp(matriz[0][k], valorCampo)){
+                                cabecalho.nroEstacoes--;
+                                break;
+                            }
+                        }
+                        strcpy(matriz[0][cont], valorCampo);
+                    } else if(strcmp(nomeCampo, "nomeLinha")==0) {
+                        tamNomeLinha = strlen(valorCampo);
+                        strcpy(nomeCampos[1], valorCampo);
+                    } else if(strcmp(nomeCampo, "codEstacao")==0) {
+                        cabecalho.nroEstacoes++;
+                        for(int k = 0; k < *nroLinhas; k++){
+                            if(!strcmp(matriz[1][k], valorCampo) && !strcmp(matriz[2][k], nomeCampos[4])){
+                                cabecalho.nroParesEstacao--;
+                                break;
+                            }
+                        }
+                        strcpy(matriz[1][cont], valorCampo);
+                        strcpy(nomeCampos[2], valorCampo);
+                    } else if(strcmp(nomeCampo, "codLinha")==0) {
+                        strcpy(nomeCampos[3], valorCampo);
+                    } else if(strcmp(nomeCampo, "codProxEstacao")==0) {
+                        cabecalho.nroEstacoes++;
+                        for(int k = 0; k < *nroLinhas; k++){
+                            if(!strcmp(matriz[2][k], valorCampo) && !strcmp(matriz[1][k], nomeCampos[2])){
+                                cabecalho.nroParesEstacao--;
+                                break;
+                            }
+                        }
+                        strcpy(matriz[2][cont], valorCampo);
+                        strcpy(nomeCampos[4], valorCampo);
+                    } else if(strcmp(nomeCampo, "distProxEstacao")==0) {
+                        strcpy(nomeCampos[5], valorCampo);
+                    } else if(strcmp(nomeCampo, "codLinhaIntegra")==0) {
+                        strcpy(nomeCampos[6], valorCampo);
+                    } else if(strcmp(nomeCampo, "codEstIntegra")==0) {
+                        strcpy(nomeCampos[7], valorCampo);
+                    }
+                }
+                fseek(fbin, 22+cont*tamRegistro, SEEK_SET);
+                int codEstacao = !strcmp(nomeCampos[2], "NULO") ? -1 : atoi(nomeCampos[2]);
+                fwrite(&codEstacao, sizeof(int), 1, fbin);
+                int codLinha = !strcmp(nomeCampos[3], "NULO") ? -1 : atoi(nomeCampos[3]);
+                fwrite(&codLinha, sizeof(int), 1, fbin);
+                int codProxEstacao = !strcmp(nomeCampos[4], "NULO") ? -1 : atoi(nomeCampos[4]);
+                fwrite(&codProxEstacao, sizeof(int), 1, fbin);
+                int distProxEstacao = !strcmp(nomeCampos[5], "NULO") ? -1 : atoi(nomeCampos[5]);
+                fwrite(&distProxEstacao, sizeof(int), 1, fbin);
+                int codLinhaIntegra = !strcmp(nomeCampos[6], "NULO") ? -1 : atoi(nomeCampos[6]);
+                fwrite(&codLinhaIntegra, sizeof(int), 1, fbin);
+                int codEstIntegra = !strcmp(nomeCampos[7], "NULO") ? -1 : atoi(nomeCampos[7]);
+                fwrite(&codEstIntegra, sizeof(int), 1, fbin);
+
+                fwrite(&tamNomeEstacao, sizeof(int), 1, fbin);
+                fwrite(nomeCampos[0], sizeof(char), tamNomeEstacao, fbin);
+                fwrite(&tamNomeLinha, sizeof(int), 1, fbin);
+                fwrite(nomeCampos[1], sizeof(char), tamNomeLinha, fbin);
+                
+                int contByte = 43 - tamNomeEstacao - tamNomeLinha;
+                char lixo[contByte];
+                for(int j = 0; j < contByte; j++){
+                    lixo[j] = '$';
+                }
+                fwrite(lixo, sizeof(char), contByte, fbin);
+            }
+            
+            for(int j = 0; j<8; ++j) {
+                free(nomeCampos[j]);
+            }
+
+            ++cont;
+            fseek(fbin, 17 + (cont * 80), SEEK_SET);
+        }
+        for(int j=0; j<quantAnds; ++j) {
+            free(condicoes[j][1]);
+        }
+    }
+    cabecalho.status = '1';
+    fseek(fbin, 0, SEEK_SET);
+    fwrite(&cabecalho.status, sizeof(char), 1, fbin);
+    fseek(fbin, 8, SEEK_CUR);
+    fwrite(&cabecalho.nroEstacoes, sizeof(int), 2, fbin);
+    fwrite(&cabecalho.nroParesEstacao, sizeof(int), 1, fbin);
+    fclose(fbin);
+}
+
 
 
 
 
 
 int main(){
-    int operacao, nroLinhas;
+    int operacao, nroLinhas, n;
     char arquivoBin[101];
     char arquivoCSV[101];
     char*** matrizes;
@@ -457,9 +639,12 @@ int main(){
                 selectFromWhere(arquivoBin,n0,true);
                 break;
             case 5:
-                int n;
                 scanf("%100s %d", arquivoBin, &n);
                 insertInto(arquivoBin, n, matrizes, &nroLinhas);
+                break;
+            case 6:
+                scanf("%100s %d", arquivoBin, &n);
+                update(arquivoBin, n, matrizes, &nroLinhas);
                 break;
         }
     }
@@ -482,6 +667,7 @@ void selectFromWhere(char *arquivoBin, int quantBuscas, bool temWhere) {
         printf("Erro no select!");
         return;
     }
+    int cont = 0;
     for(int i = 0; i<quantBuscas; ++i) {
         int quantAnds = 1;
         if(temWhere) {
@@ -517,7 +703,6 @@ void selectFromWhere(char *arquivoBin, int quantBuscas, bool temWhere) {
         }
         fseek(fbin,17,SEEK_SET);
 
-        int cont = 0;
         char removido;
         while(fread(&removido, 1, 1, fbin) == 1){
             if(removido == '1') {
@@ -580,6 +765,5 @@ void selectFromWhere(char *arquivoBin, int quantBuscas, bool temWhere) {
         }
     }
     fclose(fbin);
-
 }
 
