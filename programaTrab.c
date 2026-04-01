@@ -476,6 +476,7 @@ void update(char *arquivoBin, int nroUpdate, char ***matriz, int* nroLinhas){
         char removido;
         while(fread(&removido, 1, 1, fbin) == 1){
             if(removido == '1') {
+                ++cont;
                 fseek(fbin,79,SEEK_CUR);
                 continue;
             }
@@ -500,7 +501,8 @@ void update(char *arquivoBin, int nroUpdate, char ***matriz, int* nroLinhas){
             nomeCampos[0][tamNomeEstacao] = '\0';
             fread(&tamNomeLinha, 4, 1, fbin);
             if(tamNomeLinha == 0) {
-                nomeCampos[1] = "NULO";
+                nomeCampos[1] = malloc(5);
+                strcpy(nomeCampos[1], "NULO");
             } else {
                 nomeCampos[1] = malloc(tamNomeLinha+1);
                 fread(nomeCampos[1], tamNomeLinha, 1, fbin);
@@ -613,7 +615,7 @@ void update(char *arquivoBin, int nroUpdate, char ***matriz, int* nroLinhas){
 }
 
 
-
+void deleteFromWhere(char *,int);
 
 
 
@@ -637,6 +639,11 @@ int main(){
                 int n0;
                 scanf("%100s %d",arquivoBin,&n0);
                 selectFromWhere(arquivoBin,n0,true);
+                break;
+            case 4:
+                int n1;
+                scanf("%100s %d",arquivoBin,&n1);
+                deleteFromWhere(arquivoBin,n1);
                 break;
             case 5:
                 scanf("%100s %d", arquivoBin, &n);
@@ -664,7 +671,7 @@ int main(){
 void selectFromWhere(char *arquivoBin, int quantBuscas, bool temWhere) {
     FILE *fbin;
     if(arquivoBin == NULL || !(fbin = fopen(arquivoBin, "rb"))){
-        printf("Erro no select!");
+        printf("Erro no processamento do arquivo.\n");
         return;
     }
     int cont = 0;
@@ -702,10 +709,12 @@ void selectFromWhere(char *arquivoBin, int quantBuscas, bool temWhere) {
             }
         }
         fseek(fbin,17,SEEK_SET);
-
+        
+        bool encontrou = 0;
         char removido;
         while(fread(&removido, 1, 1, fbin) == 1){
             if(removido == '1') {
+                ++cont;
                 fseek(fbin,79,SEEK_CUR);
                 continue;
             }
@@ -730,7 +739,8 @@ void selectFromWhere(char *arquivoBin, int quantBuscas, bool temWhere) {
             nomeCampos[0][tamNomeEstacao] = '\0';
             fread(&tamNomeLinha, 4, 1, fbin);
             if(tamNomeLinha == 0) {
-                nomeCampos[1] = "NULO";
+                nomeCampos[1] = malloc(5);
+                strcpy(nomeCampos[1], "NULO");
             } else {
                 nomeCampos[1] = malloc(tamNomeLinha+1);
                 fread(nomeCampos[1], tamNomeLinha, 1, fbin);
@@ -748,6 +758,7 @@ void selectFromWhere(char *arquivoBin, int quantBuscas, bool temWhere) {
             }
 
             if(ok) {
+                encontrou = 1;
                 printf("%s %s %s %s %s %s %s %s\n", nomeCampos[2], nomeCampos[0], nomeCampos[3], nomeCampos[1], nomeCampos[4], nomeCampos[5], nomeCampos[6], nomeCampos[7]);
             }
             
@@ -763,7 +774,137 @@ void selectFromWhere(char *arquivoBin, int quantBuscas, bool temWhere) {
                 free(condicoes[j][1]);
             }
         }
+        if(!encontrou) {
+            printf("Registro inexistente.\n");
+        }
     }
     fclose(fbin);
 }
 
+void deleteFromWhere(char *arquivoBin, int quantRemocoes) {
+    FILE *fbin;
+    if(arquivoBin == NULL || !(fbin = fopen(arquivoBin, "r+b"))){
+        printf("Falha no processamento do arquivo.");
+        return;
+    }
+
+    int topo;
+    
+    fseek(fbin, 0, SEEK_SET);
+    char status = '0';
+    fwrite(&status, 1, 1, fbin);
+    fread(&topo, 4, 1, fbin);
+
+    for(int i = 0; i<quantRemocoes; ++i) {
+        int cont = 0;
+        int quantAnds = 1;
+        
+        scanf("%d", &quantAnds);
+        
+        char *condicoes[quantAnds][2];
+        for(int j = 0; j<quantAnds; ++j) {
+            char nomeCampo[23];
+            scanf(" %s", nomeCampo);
+            if(strcmp(nomeCampo, "nomeEstacao")==0) {
+                condicoes[j][0] = (char *)0;
+            } else if(strcmp(nomeCampo, "nomeLinha")==0) {
+                condicoes[j][0] = (char *)1;
+            } else if(strcmp(nomeCampo, "codEstacao")==0) {
+                condicoes[j][0] = (char *)2;
+            } else if(strcmp(nomeCampo, "codLinha")==0) {
+                condicoes[j][0] = (char *)3;
+            } else if(strcmp(nomeCampo, "codProxEstacao")==0) {
+                condicoes[j][0] = (char *)4;
+            } else if(strcmp(nomeCampo, "distProxEstacao")==0) {
+                condicoes[j][0] = (char *)5;
+            } else if(strcmp(nomeCampo, "codLinhaIntegra")==0) {
+                condicoes[j][0] = (char *)6;
+            } else if(strcmp(nomeCampo, "codEstIntegra")==0) {
+                condicoes[j][0] = (char *)7;
+            }
+            char valorCampo[46];
+            ScanQuoteString(valorCampo);
+            condicoes[j][1] = malloc(strlen(valorCampo)+1);
+            strcpy(condicoes[j][1], valorCampo);
+        }
+        
+        fseek(fbin, 17, SEEK_SET);
+
+        char removido;
+
+        while(fread(&removido, 1, 1, fbin) == 1){
+            if(removido == '1') {
+                fseek(fbin, 79, SEEK_CUR);
+                ++cont;
+                continue;
+            }
+            char *nomeCampos[8]; 
+            
+            fseek(fbin, 4, SEEK_CUR);
+            int temp;
+            for(int j = 2; j < 8; ++j) {
+                fread(&temp, 4, 1, fbin);
+                nomeCampos[j] = malloc(11);
+                if(temp == -1) { 
+                    strcpy(nomeCampos[j], "NULO");
+                } else {
+                    sprintf(nomeCampos[j], "%d", temp);
+                }
+            }
+            
+            int tamNomeEstacao, tamNomeLinha;
+            fread(&tamNomeEstacao, 4, 1, fbin);
+            nomeCampos[0] = malloc(tamNomeEstacao+1);
+            fread(nomeCampos[0], tamNomeEstacao, 1, fbin);
+            nomeCampos[0][tamNomeEstacao] = '\0';
+            
+            fread(&tamNomeLinha, 4, 1, fbin);
+            if(tamNomeLinha == 0) {
+                nomeCampos[1] = malloc(5);
+                strcpy(nomeCampos[1], "NULO");
+            } else {
+                nomeCampos[1] = malloc(tamNomeLinha+1);
+                fread(nomeCampos[1], tamNomeLinha, 1, fbin);
+                nomeCampos[1][tamNomeLinha] = '\0';
+            }
+            
+            bool ok = 1;
+            for(int j = 0; j<quantAnds && ok; ++j) {
+                int op = (int)(intptr_t)condicoes[j][0];
+                if(strcmp(nomeCampos[op], condicoes[j][1]) != 0) {
+                    ok = 0;
+                }
+            }
+
+            
+            if(ok) {
+                fseek(fbin, 17 + (cont * 80), SEEK_SET);
+                
+                char marcaRemovido = '1';
+                fwrite(&marcaRemovido, 1, 1, fbin);
+                
+                fwrite(&topo, 4, 1, fbin);
+                
+                topo = cont;
+            }
+            
+            for(int j = 0; j<8; ++j) {
+                free(nomeCampos[j]);
+            }
+
+            ++cont;
+            fseek(fbin, 17 + (cont * 80), SEEK_SET);
+        }
+        
+        for(int j = 0; j < quantAnds; ++j) {
+            free(condicoes[j][1]);
+        }
+    }
+    
+    status = '1';
+    fseek(fbin, 0, SEEK_SET);
+    fwrite(&status, 1, 1, fbin);
+    fwrite(&topo, 4, 1, fbin);
+
+    fclose(fbin);
+}
