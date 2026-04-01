@@ -566,17 +566,17 @@ void update(char *arquivoBin, int nroUpdate, char ***matriz, int* nroLinhas){
                     }
                 }
                 fseek(fbin, 22+cont*tamRegistro, SEEK_SET);
-                int codEstacao = !strcmp(nomeCampos[2], "NULO") ? -1 : atoi(nomeCampos[2]);
+                int codEstacao = (!strcmp(nomeCampos[2], "NULO") || !strcmp(nomeCampos[2], "")) ? -1 : atoi(nomeCampos[2]);
                 fwrite(&codEstacao, sizeof(int), 1, fbin);
-                int codLinha = !strcmp(nomeCampos[3], "NULO") ? -1 : atoi(nomeCampos[3]);
+                int codLinha = (!strcmp(nomeCampos[3], "NULO") || !strcmp(nomeCampos[3], "")) ? -1 : atoi(nomeCampos[3]);
                 fwrite(&codLinha, sizeof(int), 1, fbin);
-                int codProxEstacao = !strcmp(nomeCampos[4], "NULO") ? -1 : atoi(nomeCampos[4]);
+                int codProxEstacao = (!strcmp(nomeCampos[4], "NULO") || !strcmp(nomeCampos[4], "")) ? -1 : atoi(nomeCampos[4]);
                 fwrite(&codProxEstacao, sizeof(int), 1, fbin);
-                int distProxEstacao = !strcmp(nomeCampos[5], "NULO") ? -1 : atoi(nomeCampos[5]);
+                int distProxEstacao = (!strcmp(nomeCampos[5], "NULO") || !strcmp(nomeCampos[5], "")) ? -1 : atoi(nomeCampos[5]);
                 fwrite(&distProxEstacao, sizeof(int), 1, fbin);
-                int codLinhaIntegra = !strcmp(nomeCampos[6], "NULO") ? -1 : atoi(nomeCampos[6]);
+                int codLinhaIntegra = (!strcmp(nomeCampos[6], "NULO") || !strcmp(nomeCampos[6], "")) ? -1 : atoi(nomeCampos[6]);
                 fwrite(&codLinhaIntegra, sizeof(int), 1, fbin);
-                int codEstIntegra = !strcmp(nomeCampos[7], "NULO") ? -1 : atoi(nomeCampos[7]);
+                int codEstIntegra = (!strcmp(nomeCampos[7], "NULO") || !strcmp(nomeCampos[7], "")) ? -1 : atoi(nomeCampos[7]);
                 fwrite(&codEstIntegra, sizeof(int), 1, fbin);
 
                 fwrite(&tamNomeEstacao, sizeof(int), 1, fbin);
