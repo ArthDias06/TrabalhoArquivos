@@ -37,14 +37,14 @@ typedef struct registro{
 int createTable(char* csv, char* bin, char**** matrizes){
     FILE *fbin;
     if (bin == NULL || !(fbin = fopen(bin, "wb"))) {
-        printf("Erro na abertura do arquivo binário!");
-        return 0;
+        printf("Falha no processamento do arquivo.\n");
+        return -1;
     }
     FILE *fcsv;
     if (csv == NULL || !(fcsv = fopen(csv, "r"))) {
-        printf("Erro na abertura do arquivo csv!");
+        printf("Falha no processamento do arquivo.\n");
         fclose(fbin);
-        return 0;
+        return -1;
     }
     //Começam em -1 para poderem iterarem corretamente
     CABECALHO cabecalho = {'0', -1, 0, 0, 0};
@@ -297,6 +297,7 @@ void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinha
     fseek(fbin,0,SEEK_SET);
     int proxInsercao;
     //Registro aberto para escrita deve ter status como 0 - inconsistente
+    cabecalho.status = '0';
     fwrite(&cabecalho.status, sizeof(char), 1, fbin);
     fread(&cabecalho.topo, sizeof(int), 1, fbin);
     fread(&cabecalho.proxRRN, sizeof(int), 1, fbin);
@@ -437,12 +438,13 @@ void update(char *arquivoBin, int nroUpdate, char ***matriz, int* nroLinhas){
     CABECALHO cabecalho;
     fseek(fbin,0,SEEK_SET);
     //Registro aberto para escrita deve ter status como 0 - inconsistente
+    cabecalho.status = '0';
     fwrite(&cabecalho.status, sizeof(char), 1, fbin);
     fseek(fbin, 8, SEEK_CUR);
     fread(&cabecalho.nroEstacoes, sizeof(int), 1,fbin);
     fread(&cabecalho.nroParesEstacao, sizeof(int), 1,fbin);
-    int cont = 0;
     for(int i = 0; i<nroUpdate; ++i) {
+        int cont = 0;
         int quantAnds = 1;
         scanf("%d", &quantAnds);
         char *condicoes[quantAnds][2];
@@ -468,6 +470,9 @@ void update(char *arquivoBin, int nroUpdate, char ***matriz, int* nroLinhas){
             }
             char valorCampo[46];
             ScanQuoteString(valorCampo);
+            if(!strcmp(valorCampo, "")) {
+                strcpy(valorCampo, "NULO");
+            }
             condicoes[j][1] = malloc(strlen(valorCampo)+1);
             strcpy(condicoes[j][1], valorCampo);
         }
@@ -615,21 +620,23 @@ void update(char *arquivoBin, int nroUpdate, char ***matriz, int* nroLinhas){
 }
 
 
-void deleteFromWhere(char *,int);
+bool deleteFromWhere(char *,int);
 
 
 
 int main(){
-    int operacao, nroLinhas, n;
+    int operacao, nroLinhas = 0, n;
     char arquivoBin[101];
     char arquivoCSV[101];
-    char*** matrizes;
+    char*** matrizes = NULL;
     while(scanf("%d", &operacao) == 1){
         switch(operacao){
             case 1:
                 scanf("%100s %100s", arquivoCSV, arquivoBin);
                 nroLinhas = createTable(arquivoCSV, arquivoBin, &matrizes);
-                BinarioNaTela(arquivoBin);
+                if(nroLinhas != -1) {
+                    BinarioNaTela(arquivoBin);
+                }
                 break;
             case 2:
                 scanf("%100s",arquivoBin);
@@ -643,11 +650,15 @@ int main(){
             case 4:
                 int n1;
                 scanf("%100s %d",arquivoBin,&n1);
-                deleteFromWhere(arquivoBin,n1);
+                bool erro = deleteFromWhere(arquivoBin,n1);
+                if(!erro) {
+                    BinarioNaTela(arquivoBin);
+                }
                 break;
             case 5:
                 scanf("%100s %d", arquivoBin, &n);
                 insertInto(arquivoBin, n, matrizes, &nroLinhas);
+                BinarioNaTela(arquivoBin);
                 break;
             case 6:
                 scanf("%100s %d", arquivoBin, &n);
@@ -656,15 +667,17 @@ int main(){
         }
     }
     //Cálculo de quanta memória foi criada para armazenar a matriz
-    int temp = nroLinhas/200;
-    nroLinhas = !(nroLinhas%200) ? nroLinhas : ((temp+1)*200);
-    for(int i = 0; i < 3; i++){
-        for(int j = 0; j < nroLinhas; j++){
-            free(matrizes[i][j]);
+    if(matrizes != NULL) {
+        int temp = nroLinhas/200;
+        nroLinhas = !(nroLinhas%200) ? nroLinhas : ((temp+1)*200);
+        for(int i = 0; i < 3; i++){
+            for(int j = 0; j < nroLinhas; j++){
+                free(matrizes[i][j]);
+            }
+            free(matrizes[i]);
         }
-        free(matrizes[i]);
+        free(matrizes);
     }
-    free(matrizes);
 }
 
 
@@ -674,8 +687,8 @@ void selectFromWhere(char *arquivoBin, int quantBuscas, bool temWhere) {
         printf("Erro no processamento do arquivo.\n");
         return;
     }
-    int cont = 0;
     for(int i = 0; i<quantBuscas; ++i) {
+        int cont = 0;
         int quantAnds = 1;
         if(temWhere) {
             scanf("%d", &quantAnds);
@@ -703,7 +716,14 @@ void selectFromWhere(char *arquivoBin, int quantBuscas, bool temWhere) {
                     condicoes[j][0] = (char *)7;
                 }
                 char valorCampo[46];
-                ScanQuoteString(valorCampo);
+                if(strcmp(nomeCampo, "nomeEstacao") == 0 || strcmp(nomeCampo, "nomeLinha") == 0) {
+                    ScanQuoteString(valorCampo);
+                } else {
+                    scanf(" %s", valorCampo);
+                }
+                if(!strcmp(valorCampo, "")) {
+                    strcpy(valorCampo, "NULO");
+                }
                 condicoes[j][1] = malloc(strlen(valorCampo)+1);
                 strcpy(condicoes[j][1], valorCampo);
             }
@@ -769,31 +789,39 @@ void selectFromWhere(char *arquivoBin, int quantBuscas, bool temWhere) {
             ++cont;
             fseek(fbin, 17 + (cont * 80), SEEK_SET);
         }
+        if(!encontrou) {
+            printf("Registro inexistente.\n");
+        }
         if(temWhere) {
             for(int j=0; j<quantAnds; ++j) {
                 free(condicoes[j][1]);
             }
-        }
-        if(!encontrou) {
-            printf("Registro inexistente.\n");
+            printf("\n");
         }
     }
     fclose(fbin);
 }
 
-void deleteFromWhere(char *arquivoBin, int quantRemocoes) {
+bool deleteFromWhere(char *arquivoBin, int quantRemocoes) {
     FILE *fbin;
     if(arquivoBin == NULL || !(fbin = fopen(arquivoBin, "r+b"))){
         printf("Falha no processamento do arquivo.");
-        return;
+        return 1;
     }
 
-    int topo;
-    
+    CABECALHO cabecalho;
     fseek(fbin, 0, SEEK_SET);
-    char status = '0';
-    fwrite(&status, 1, 1, fbin);
-    fread(&topo, 4, 1, fbin);
+    
+    fread(&cabecalho.status, sizeof(char), 1, fbin);
+    fread(&cabecalho.topo, sizeof(int), 1, fbin);
+    fread(&cabecalho.proxRRN, sizeof(int), 1, fbin);
+    fread(&cabecalho.nroEstacoes, sizeof(int), 1, fbin);
+    fread(&cabecalho.nroParesEstacao, sizeof(int), 1, fbin);
+
+    fseek(fbin, 0, SEEK_SET);
+    //Registro aberto para escrita deve ter status como 0 - inconsistente
+    cabecalho.status = '0';
+    fwrite(&cabecalho.status, sizeof(char), 1, fbin);
 
     for(int i = 0; i<quantRemocoes; ++i) {
         int cont = 0;
@@ -822,8 +850,12 @@ void deleteFromWhere(char *arquivoBin, int quantRemocoes) {
             } else if(strcmp(nomeCampo, "codEstIntegra")==0) {
                 condicoes[j][0] = (char *)7;
             }
-            char valorCampo[46];
+            
+            char valorCampo[46] = {0}; 
             ScanQuoteString(valorCampo);
+            if(!strcmp(valorCampo, "")) {
+                strcpy(valorCampo, "NULO");
+            }
             condicoes[j][1] = malloc(strlen(valorCampo)+1);
             strcpy(condicoes[j][1], valorCampo);
         }
@@ -844,7 +876,7 @@ void deleteFromWhere(char *arquivoBin, int quantRemocoes) {
             int temp;
             for(int j = 2; j < 8; ++j) {
                 fread(&temp, 4, 1, fbin);
-                nomeCampos[j] = malloc(11);
+                nomeCampos[j] = malloc(15);
                 if(temp == -1) { 
                     strcpy(nomeCampos[j], "NULO");
                 } else {
@@ -855,7 +887,9 @@ void deleteFromWhere(char *arquivoBin, int quantRemocoes) {
             int tamNomeEstacao, tamNomeLinha;
             fread(&tamNomeEstacao, 4, 1, fbin);
             nomeCampos[0] = malloc(tamNomeEstacao+1);
-            fread(nomeCampos[0], tamNomeEstacao, 1, fbin);
+            if(tamNomeEstacao > 0) {
+                fread(nomeCampos[0], tamNomeEstacao, 1, fbin);
+            }
             nomeCampos[0][tamNomeEstacao] = '\0';
             
             fread(&tamNomeLinha, 4, 1, fbin);
@@ -876,16 +910,62 @@ void deleteFromWhere(char *arquivoBin, int quantRemocoes) {
                 }
             }
 
-            
             if(ok) {
                 fseek(fbin, 17 + (cont * 80), SEEK_SET);
                 
-                char marcaRemovido = '1';
-                fwrite(&marcaRemovido, 1, 1, fbin);
+                char marcarRemocao = '1';
+                fwrite(&marcarRemocao, 1, 1, fbin);
+                fwrite(&cabecalho.topo, 4, 1, fbin);
+                cabecalho.topo = cont;
                 
-                fwrite(&topo, 4, 1, fbin);
+                long posAtual = ftell(fbin);
+                bool nomeEstacaoAindaExiste = false;
+                bool parAindaExiste = false;
                 
-                topo = cont;
+                fseek(fbin, 17, SEEK_SET);
+                char removido;
+                int cont = 0;
+                while(fread(&removido, 1, 1, fbin) == 1) {
+                    if(removido == '0') {
+                        int camposInt[7];
+                        fseek(fbin, 4, SEEK_CUR);
+                        
+                        for(int k=0; k<7; ++k) {
+                            fread(&camposInt[k], 4, 1, fbin);
+                        }
+                        
+                        int tamNome = camposInt[6];
+                        char nomeEstacao[50] = {0};
+                        if(tamNome > 0) {
+                            fread(nomeEstacao, 1, tamNome, fbin);
+                        }
+                        if(strcmp(nomeEstacao, nomeCampos[0]) == 0) {
+                            nomeEstacaoAindaExiste = true;
+                        }
+                        
+                        int codEstacao = (!strcmp(nomeCampos[2], "NULO")) ? -1 : atoi(nomeCampos[2]);
+                        int codProx = (!strcmp(nomeCampos[4], "NULO")) ? -1 : atoi(nomeCampos[4]);
+                        
+                        if(camposInt[0] == codEstacao && camposInt[2] == codProx) {
+                            parAindaExiste = true;
+                        }
+                        if(nomeEstacaoAindaExiste && parAindaExiste) {
+                            break;
+                        }
+                    }
+                    ++cont;
+                    fseek(fbin, 17 + (cont * 80), SEEK_SET);
+                }
+                
+                
+                if(!nomeEstacaoAindaExiste) {
+                    --cabecalho.nroEstacoes;
+                }
+                if(!parAindaExiste) {
+                    --cabecalho.nroParesEstacao;
+                }
+
+                fseek(fbin, posAtual, SEEK_SET);
             }
             
             for(int j = 0; j<8; ++j) {
@@ -901,10 +981,14 @@ void deleteFromWhere(char *arquivoBin, int quantRemocoes) {
         }
     }
     
-    status = '1';
+    cabecalho.status = '1';
     fseek(fbin, 0, SEEK_SET);
-    fwrite(&status, 1, 1, fbin);
-    fwrite(&topo, 4, 1, fbin);
+    fwrite(&cabecalho.status, sizeof(char), 1, fbin);
+    fwrite(&cabecalho.topo, sizeof(int), 1, fbin);
+    fwrite(&cabecalho.proxRRN, sizeof(int), 1, fbin);
+    fwrite(&cabecalho.nroEstacoes, sizeof(int), 1, fbin);
+    fwrite(&cabecalho.nroParesEstacao, sizeof(int), 1, fbin);
 
     fclose(fbin);
+    return 0;
 }
