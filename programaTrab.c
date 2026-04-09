@@ -113,7 +113,7 @@ int createTable(char* csv, char* bin, char**** matrizes){
             }
             continue;
         }
-        //printf("%s,%s,%s,%s,%s,%s,%s,%s\n", (*matrizes)[1][i], (*matrizes)[0][i], codLin, nomeLin, (*matrizes)[2][i], distanciaProx, codLinInteg, codEstInteg);
+        printf("%d %s,%s,%s,%s,%s,%s,%s,%s\n", cabecalho.proxRRN, (*matrizes)[1][i], (*matrizes)[0][i], codLin, nomeLin, (*matrizes)[2][i], distanciaProx, codLinInteg, codEstInteg);
         cont = 0;
         contVariavel = 0;
         //atoi de string vazia retorna 0
@@ -361,13 +361,12 @@ void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinha
             }
         }
         for(int i = 0; i < *nroLinhas; i++){
-            if(!strcmp(matrizes[1][i], codEstacao) && !strcmp(matrizes[2][i], codProxEstacao)){
+            if(!strcmp(codProxEstacao, "") || !strcmp(codEstacao, matrizes[1][i]) && !strcmp(codProxEstacao, matrizes[2][i]) || !strcmp(codProxEstacao, matrizes[1][i]) && !strcmp(codEstacao, matrizes[2][i])){
                 cabecalho.nroParesEstacao--;
                 break;
             }
         }
-
-
+        
         //Escrita no arquivo
         fseek(fbin, proxInsercao*tamRegistro+17, SEEK_SET);
         fwrite(&registro.removido, sizeof(char),1,fbin);
@@ -383,17 +382,16 @@ void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinha
         fwrite(&registro.tamNomeLinha,sizeof(int),1,fbin);
         fwrite(registro.nomeLinha,sizeof(char),strlen(registro.nomeLinha),fbin);
         int contByte = 43 - strlen(registro.nomeEstacao) - strlen(registro.nomeLinha);
-        char lixo[contByte];
+        char lixo[contByte+1];
         for(int i = 0; i < contByte; i++){
             lixo[i] = '$';
         }
+        lixo[contByte] = '\0';
         fwrite(lixo, sizeof(char), contByte, fbin);
-
-
         if(cabecalho.proxRRN == proxInsercao){
             cabecalho.proxRRN++;
         }else{
-            fseek(fbin, cabecalho.topo*tamRegistro+1,SEEK_SET);
+            fseek(fbin, cabecalho.topo*tamRegistro+18,SEEK_SET);
             fread(&proxInsercao, sizeof(int), 1, fbin);
             int temp = -1;
             fseek(fbin, -4, SEEK_CUR);
@@ -418,6 +416,7 @@ void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinha
         (*nroLinhas)++;
     }
     cabecalho.status = '1';
+    printf("%d\n", cabecalho.nroParesEstacao);
     fseek(fbin, 0, SEEK_SET);
     fwrite(&cabecalho.status, sizeof(char), 1, fbin);
     fwrite(&cabecalho.topo, sizeof(int), 1, fbin);
@@ -593,10 +592,11 @@ void update(char *arquivoBin, int nroUpdate, char ***matriz, int* nroLinhas){
                 fwrite(nomeCampos[1], sizeof(char), tamNomeLinha, fbin);
                 
                 int contByte = 43 - tamNomeEstacao - tamNomeLinha;
-                char lixo[contByte];
+                char lixo[contByte+1];
                 for(int j = 0; j < contByte; j++){
                     lixo[j] = '$';
                 }
+                lixo[contByte] = '\0';
                 fwrite(lixo, sizeof(char), contByte, fbin);
             }
             
