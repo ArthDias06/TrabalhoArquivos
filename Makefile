@@ -1,5 +1,5 @@
 all:
 	gcc programaTrab.c -o programaTrab
 
-run:
+run: all
 	./programaTrab

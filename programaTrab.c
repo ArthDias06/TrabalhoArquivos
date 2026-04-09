@@ -113,7 +113,7 @@ int createTable(char* csv, char* bin, char**** matrizes){
             }
             continue;
         }
-        printf("%s %s %s %s %s %s %s %s\n", (*matrizes)[1][i], (*matrizes)[0][i], codLin, nomeLin, (*matrizes)[2][i], distanciaProx, codLinInteg, codEstInteg);
+        //printf("%s,%s,%s,%s,%s,%s,%s,%s\n", (*matrizes)[1][i], (*matrizes)[0][i], codLin, nomeLin, (*matrizes)[2][i], distanciaProx, codLinInteg, codEstInteg);
         cont = 0;
         contVariavel = 0;
         //atoi de string vazia retorna 0
@@ -178,7 +178,7 @@ int createTable(char* csv, char* bin, char**** matrizes){
             }
         }
         for(int j = 0; j < i; j++){
-            if(!strcmp((*matrizes)[1][j], (*matrizes)[1][i]) && !strcmp((*matrizes)[2][j], (*matrizes)[2][i])){
+            if(!strcmp((*matrizes)[2][i], "") || !strcmp((*matrizes)[1][j], (*matrizes)[1][i]) && !strcmp((*matrizes)[2][j], (*matrizes)[2][i]) || !strcmp((*matrizes)[2][j], (*matrizes)[1][i]) && !strcmp((*matrizes)[1][j], (*matrizes)[2][i])){
                 cabecalho.nroParesEstacao--;
                 break;
             }
@@ -198,10 +198,11 @@ int createTable(char* csv, char* bin, char**** matrizes){
         //Espaço para colocar lixo('$')
         contByte = 43 - strlen(registro.nomeEstacao) - strlen(registro.nomeLinha);
         if(contByte > 0){
-            char lixo[contByte];
+            char lixo[contByte+1];
             for(int j = 0; j < contByte; j++){
                 lixo[j] = '$';
             }
+            lixo[contByte] = '\0';
             fwrite(lixo, sizeof(char), contByte, fbin);
         }
     }
@@ -663,6 +664,7 @@ int main(){
             case 6:
                 scanf("%100s %d", arquivoBin, &n);
                 update(arquivoBin, n, matrizes, &nroLinhas);
+                BinarioNaTela(arquivoBin);
                 break;
         }
     }
