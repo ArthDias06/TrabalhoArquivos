@@ -297,7 +297,6 @@ void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinha
     fread(&cabecalho.proxRRN, sizeof(int), 1, fbin);
     fread(&cabecalho.nroEstacoes, sizeof(int), 1,fbin);
     fread(&cabecalho.nroParesEstacao, sizeof(int), 1,fbin);
-    printf("\n%d %d\n", cabecalho.nroEstacoes, cabecalho.nroParesEstacao);
     if(*nroLinhas <= 0){
         for(*nroLinhas = 0; *nroLinhas<cabecalho.proxRRN; (*nroLinhas)++){
             if((*nroLinhas)% 200 == 0 && (*nroLinhas) > 0){
@@ -332,10 +331,8 @@ void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinha
             }
         }
     }
-    printf("%d\n", cabecalho.topo);
     for(int i = 0; i < nroInsert; i++){
         proxInsercao = cabecalho.topo != -1 ? cabecalho.topo : cabecalho.proxRRN;
-        printf("%d\n",proxInsercao);
         ScanQuoteString(codEstacao);
         ScanQuoteString(nomeEstacao);
         ScanQuoteString(codLinha);
@@ -381,7 +378,12 @@ void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinha
         registro.removido = '0';
         registro.proximo = -1;
 
-
+        if(cabecalho.proxRRN == proxInsercao){
+            cabecalho.proxRRN++;
+        }else{
+            fseek(fbin, cabecalho.topo*tamRegistro+18,SEEK_SET);
+            fread(&cabecalho.topo, sizeof(int), 1, fbin);
+        }
         
         //Escrita no arquivo
         fseek(fbin, proxInsercao*tamRegistro+17, SEEK_SET);
@@ -405,22 +407,7 @@ void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinha
         lixo[contByte] = '\0';
         fwrite(lixo, sizeof(char), contByte, fbin);
 
-        printf("%d %s,%s,%s,%s,%s,%s,%s,%s\n", proxInsercao, codEstacao, nomeEstacao, codLinha, nomeLinha, codProxEstacao, distProxEstacao, codLinhaIntegra, codEstIntegra);
 
-       if(cabecalho.proxRRN == proxInsercao){
-            cabecalho.proxRRN++;
-            cabecalho.nroEstacoes++;
-            cabecalho.nroParesEstacao++;
-        }else{
-            fseek(fbin, cabecalho.topo*tamRegistro+18,SEEK_SET);
-            fread(&proxInsercao, sizeof(int), 1, fbin);
-            printf("%d\n", proxInsercao);
-            int temp = -1;
-            fseek(fbin, -4, SEEK_CUR);
-            //Deixa o valor -1 no próximo dele, pois não faz parte da pilha
-            fwrite(&temp, sizeof(int), 1, fbin);
-            cabecalho.topo = proxInsercao;
-        }
 
         if((*nroLinhas)% 200 == 0 && (*nroLinhas) > 0){
             matrizes[0] = realloc(matrizes[0], sizeof(char*) * ((*nroLinhas)+200));
@@ -433,7 +420,7 @@ void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinha
             }
         }
 
-
+        cabecalho.nroEstacoes++;cabecalho.nroParesEstacao++;
         //Ver se precisa aumentar nroEstacoes e nroParesEstacao
         for(int i = 0; i < *nroLinhas; i++){
             if(!strcmp(matrizes[0][i], nomeEstacao)){
@@ -456,7 +443,6 @@ void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinha
     }
     cabecalho.status = '1';
     fseek(fbin, 0, SEEK_SET);
-    printf("%d %d %d\n", cabecalho.proxRRN, cabecalho.nroEstacoes, cabecalho.nroParesEstacao);
     fwrite(&cabecalho.status, sizeof(char), 1, fbin);
     fwrite(&cabecalho.topo, sizeof(int), 1, fbin);
     fwrite(&cabecalho.proxRRN, sizeof(int), 1, fbin);
