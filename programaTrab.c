@@ -34,32 +34,25 @@ typedef struct registro{
 
 
 
-int createTable(char* csv, char* bin, char**** matrizes){
+bool createTable(char* csv, char* bin, char*** matrizes, int* nroLinhas){
     FILE *fbin;
     if (bin == NULL || !(fbin = fopen(bin, "wb"))) {
         printf("Falha no processamento do arquivo.\n");
-        return -1;
+        return false;
     }
     FILE *fcsv;
     if (csv == NULL || !(fcsv = fopen(csv, "r"))) {
         printf("Falha no processamento do arquivo.\n");
         fclose(fbin);
-        return -1;
+        return false;
     }
     //Começam em -1 para poderem iterarem corretamente
     CABECALHO cabecalho = {'0', -1, 0, 0, 0};
     fseek(fcsv, 101, SEEK_SET); //Ignora a primeira linha do CSV.
     char codLin[11], nomeLin[44], distanciaProx[11], codLinInteg[11], codEstInteg[11];
-    *matrizes = malloc(sizeof(char**) * 3);
-    for(int i = 0; i < 3; i++){
-        (*matrizes)[i] = malloc(sizeof(char*) * 200);
-    }
-    for(int i = 0; i < 200; i++){
-        (*matrizes)[0][i] = malloc(sizeof(char) * 44);
-        (*matrizes)[1][i] = malloc(sizeof(char) * 11);
-        (*matrizes)[2][i] = malloc(sizeof(char) * 11);
-    }
-    int i = 0;
+    
+
+    *nroLinhas = 0;
     int contVariavel = 0;
     REGISTRO registro;
     //Colocando valores iniciais para ir para a inserção dos inserts
@@ -81,10 +74,10 @@ int createTable(char* csv, char* bin, char**** matrizes){
         }
         switch(contVariavel){
             case 0:
-                (*matrizes)[1][i][cont] = ch!=',' ? ch : '\0';
+                matrizes[1][*nroLinhas][cont] = ch!=',' ? ch : '\0';
                 break;
             case 1:
-                (*matrizes)[0][i][cont] = ch!=',' ? ch : '\0';
+                matrizes[0][*nroLinhas][cont] = ch!=',' ? ch : '\0';
                 break;
             case 2:
                 codLin[cont] = ch!=',' ? ch : '\0';
@@ -93,7 +86,7 @@ int createTable(char* csv, char* bin, char**** matrizes){
                 nomeLin[cont] = ch!=',' ? ch : '\0';
                 break;
             case 4:
-                (*matrizes)[2][i][cont] = ch!=',' ? ch : '\0';
+                matrizes[2][*nroLinhas][cont] = ch!=',' ? ch : '\0';
                 break;
             case 5:
                 distanciaProx[cont] = ch!=',' ? ch : '\0';
@@ -113,26 +106,26 @@ int createTable(char* csv, char* bin, char**** matrizes){
             }
             continue;
         }
-        printf("%d %s,%s,%s,%s,%s,%s,%s,%s\n", cabecalho.proxRRN, (*matrizes)[1][i], (*matrizes)[0][i], codLin, nomeLin, (*matrizes)[2][i], distanciaProx, codLinInteg, codEstInteg);
+        //printf("%d %s,%s,%s,%s,%s,%s,%s,%s\n", cabecalho.proxRRN, matrizes[1][i], matrizes[0][i], codLin, nomeLin, matrizes[2][i], distanciaProx, codLinInteg, codEstInteg);
         cont = 0;
         contVariavel = 0;
         //atoi de string vazia retorna 0
         registro.removido = '0';
         registro.proximo = -1;
-        if(!strlen((*matrizes)[1][i])){
+        if(!strlen(matrizes[1][*nroLinhas])){
             registro.codEstacao = -1;
         }else{
-            registro.codEstacao = atoi((*matrizes)[1][i]);
+            registro.codEstacao = atoi(matrizes[1][*nroLinhas]);
         }
         if(!strlen(codLin)){
             registro.codLinha = -1;
         }else{
             registro.codLinha = atoi(codLin);
         }
-        if(!strlen((*matrizes)[2][i])){
+        if(!strlen(matrizes[2][*nroLinhas])){
             registro.codProxEstacao = -1;
         }else{
-            registro.codProxEstacao = atoi((*matrizes)[2][i]);
+            registro.codProxEstacao = atoi(matrizes[2][*nroLinhas]);
         }
         if(!strlen(distanciaProx)){
             registro.distProxEstacao = -1;
@@ -149,9 +142,9 @@ int createTable(char* csv, char* bin, char**** matrizes){
         }else{
             registro.codEstIntegra = atoi(codEstInteg);
         }
-        registro.tamNomeEstacao = strlen((*matrizes)[0][i]);
+        registro.tamNomeEstacao = strlen(matrizes[0][*nroLinhas]);
         registro.tamNomeLinha = strlen(nomeLin);
-        strcpy(registro.nomeEstacao, (*matrizes)[0][i]);
+        strcpy(registro.nomeEstacao, matrizes[0][*nroLinhas]);
         strcpy(registro.nomeLinha, nomeLin);
 
         fwrite(&registro.removido, sizeof(char), 1, fbin);
@@ -171,30 +164,30 @@ int createTable(char* csv, char* bin, char**** matrizes){
 
 
         cabecalho.nroEstacoes++;cabecalho.nroParesEstacao++;
-        for(int j = 0; j < i; j++){
-            if(!strcmp((*matrizes)[0][j], (*matrizes)[0][i])){
+        for(int j = 0; j < *nroLinhas; j++){
+            if(!strcmp(matrizes[0][j], matrizes[0][*nroLinhas])){
                 cabecalho.nroEstacoes--;
                 break;
             }
         }
-        for(int j = 0; j < i; j++){
-            if(!strcmp((*matrizes)[2][i], "") || !strcmp((*matrizes)[1][j], (*matrizes)[1][i]) && !strcmp((*matrizes)[2][j], (*matrizes)[2][i]) || !strcmp((*matrizes)[2][j], (*matrizes)[1][i]) && !strcmp((*matrizes)[1][j], (*matrizes)[2][i])){
+        for(int j = 0; j < *nroLinhas; j++){
+            if(!strcmp(matrizes[2][*nroLinhas], "") || !strcmp(matrizes[1][j], matrizes[1][*nroLinhas]) && !strcmp(matrizes[2][j], matrizes[2][*nroLinhas]) || !strcmp(matrizes[2][j], matrizes[1][*nroLinhas]) && !strcmp(matrizes[1][j], matrizes[2][*nroLinhas])){
                 cabecalho.nroParesEstacao--;
                 break;
             }
         }
         //Vê se o i está na última linha da matriz da matriz, se estiver, aloca mais memória
-        if(i% 200 == 0 && i > 0){
-            (*matrizes)[0] = realloc((*matrizes)[0], sizeof(char*) * (i+200));
-            (*matrizes)[1] = realloc((*matrizes)[1], sizeof(char*) * (i+200));
-            (*matrizes)[2] = realloc((*matrizes)[2], sizeof(char*) * (i+200));
-            for(int j = i; j < i+200; j++){
-                (*matrizes)[0][j] = malloc(sizeof(char) * 44);
-                (*matrizes)[1][j] = malloc(sizeof(char) * 11);
-                (*matrizes)[2][j] = malloc(sizeof(char) * 11);
+        if((*nroLinhas)% 200 == 0 && (*nroLinhas) > 0){
+            matrizes[0] = realloc(matrizes[0], sizeof(char*) * ((*nroLinhas)+200));
+            matrizes[1] = realloc(matrizes[1], sizeof(char*) * ((*nroLinhas)+200));
+            matrizes[2] = realloc(matrizes[2], sizeof(char*) * ((*nroLinhas)+200));
+            for(int j = *nroLinhas; j < (*nroLinhas)+200; j++){
+                matrizes[0][j] = malloc(sizeof(char) * 44);
+                matrizes[1][j] = malloc(sizeof(char) * 11);
+                matrizes[2][j] = malloc(sizeof(char) * 11);
             }
         }
-        i++;
+        (*nroLinhas)++;
         //Espaço para colocar lixo('$')
         contByte = 43 - strlen(registro.nomeEstacao) - strlen(registro.nomeLinha);
         if(contByte > 0){
@@ -217,7 +210,7 @@ int createTable(char* csv, char* bin, char**** matrizes){
 
     fclose (fcsv);
     fclose(fbin);
-    return i;
+    return true;
 }
 
 
@@ -304,8 +297,45 @@ void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinha
     fread(&cabecalho.proxRRN, sizeof(int), 1, fbin);
     fread(&cabecalho.nroEstacoes, sizeof(int), 1,fbin);
     fread(&cabecalho.nroParesEstacao, sizeof(int), 1,fbin);
+    printf("\n%d %d\n", cabecalho.nroEstacoes, cabecalho.nroParesEstacao);
+    if(*nroLinhas <= 0){
+        for(*nroLinhas = 0; *nroLinhas<cabecalho.proxRRN; (*nroLinhas)++){
+            if((*nroLinhas)% 200 == 0 && (*nroLinhas) > 0){
+                matrizes[0] = realloc(matrizes[0], sizeof(char*) * ((*nroLinhas)+200));
+                matrizes[1] = realloc(matrizes[1], sizeof(char*) * ((*nroLinhas)+200));
+                matrizes[2] = realloc(matrizes[2], sizeof(char*) * ((*nroLinhas)+200));
+                for(int j = *nroLinhas; j < (*nroLinhas)+200; j++){
+                    matrizes[0][j] = malloc(sizeof(char) * 44);
+                    matrizes[1][j] = malloc(sizeof(char) * 11);
+                    matrizes[2][j] = malloc(sizeof(char) * 11);
+                }
+            }
+            int temp;
+            char rem;
+            fread(&rem, sizeof(char), 1, fbin);
+            if(rem == '0'){
+                fseek(fbin,4,SEEK_CUR);
+                fread(&temp, sizeof(int), 1, fbin);
+                sprintf(matrizes[1][*nroLinhas], "%d", temp);
+                fseek(fbin,4,SEEK_CUR);
+                fread(&temp, sizeof(int), 1, fbin);
+                if(temp == -1) strcpy(matrizes[2][*nroLinhas], "");
+                else sprintf(matrizes[2][*nroLinhas], "%d", temp);
+                fseek(fbin,12,SEEK_CUR);
+                fread(&temp, sizeof(int), 1, fbin);
+                fread(matrizes[0][*nroLinhas], sizeof(char), temp, fbin);
+                fseek(fbin, 17 + (*nroLinhas + 1) * tamRegistro, SEEK_SET);
+                matrizes[0][*nroLinhas][temp] = '\0';
+            }else{
+                fseek(fbin, 17 + (*nroLinhas + 1) * tamRegistro, SEEK_SET);
+                --*nroLinhas;
+            }
+        }
+    }
+    printf("%d\n", cabecalho.topo);
     for(int i = 0; i < nroInsert; i++){
         proxInsercao = cabecalho.topo != -1 ? cabecalho.topo : cabecalho.proxRRN;
+        printf("%d\n",proxInsercao);
         ScanQuoteString(codEstacao);
         ScanQuoteString(nomeEstacao);
         ScanQuoteString(codLinha);
@@ -351,21 +381,7 @@ void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinha
         registro.removido = '0';
         registro.proximo = -1;
 
-        cabecalho.nroEstacoes++;
-        cabecalho.nroParesEstacao++;
-        //Ver se precisa aumentar nroEstacoes e nroParesEstacao
-        for(int i = 0; i < *nroLinhas; i++){
-            if(!strcmp(matrizes[0][i], nomeEstacao)){
-                cabecalho.nroEstacoes--;
-                break;
-            }
-        }
-        for(int i = 0; i < *nroLinhas; i++){
-            if(!strcmp(codProxEstacao, "") || !strcmp(codEstacao, matrizes[1][i]) && !strcmp(codProxEstacao, matrizes[2][i]) || !strcmp(codProxEstacao, matrizes[1][i]) && !strcmp(codEstacao, matrizes[2][i])){
-                cabecalho.nroParesEstacao--;
-                break;
-            }
-        }
+
         
         //Escrita no arquivo
         fseek(fbin, proxInsercao*tamRegistro+17, SEEK_SET);
@@ -388,11 +404,17 @@ void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinha
         }
         lixo[contByte] = '\0';
         fwrite(lixo, sizeof(char), contByte, fbin);
-        if(cabecalho.proxRRN == proxInsercao){
+
+        printf("%d %s,%s,%s,%s,%s,%s,%s,%s\n", proxInsercao, codEstacao, nomeEstacao, codLinha, nomeLinha, codProxEstacao, distProxEstacao, codLinhaIntegra, codEstIntegra);
+
+       if(cabecalho.proxRRN == proxInsercao){
             cabecalho.proxRRN++;
+            cabecalho.nroEstacoes++;
+            cabecalho.nroParesEstacao++;
         }else{
             fseek(fbin, cabecalho.topo*tamRegistro+18,SEEK_SET);
             fread(&proxInsercao, sizeof(int), 1, fbin);
+            printf("%d\n", proxInsercao);
             int temp = -1;
             fseek(fbin, -4, SEEK_CUR);
             //Deixa o valor -1 no próximo dele, pois não faz parte da pilha
@@ -410,14 +432,31 @@ void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinha
                 matrizes[2][j] = malloc(sizeof(char) * 11);
             }
         }
+
+
+        //Ver se precisa aumentar nroEstacoes e nroParesEstacao
+        for(int i = 0; i < *nroLinhas; i++){
+            if(!strcmp(matrizes[0][i], nomeEstacao)){
+                cabecalho.nroEstacoes--;
+                break;
+            }
+        }
+        for(int i = 0; i < *nroLinhas; i++){
+            if(!strcmp(codProxEstacao, "") || !strcmp(codEstacao, matrizes[1][i]) && !strcmp(codProxEstacao, matrizes[2][i]) || !strcmp(codProxEstacao, matrizes[1][i]) && !strcmp(codEstacao, matrizes[2][i])){
+                cabecalho.nroParesEstacao--;
+                break;
+            }
+        }
+
+
         strcpy(matrizes[0][*nroLinhas], nomeEstacao);
         strcpy(matrizes[1][*nroLinhas], codEstacao);
         strcpy(matrizes[2][*nroLinhas], codProxEstacao);
         (*nroLinhas)++;
     }
     cabecalho.status = '1';
-    printf("%d\n", cabecalho.nroParesEstacao);
     fseek(fbin, 0, SEEK_SET);
+    printf("%d %d %d\n", cabecalho.proxRRN, cabecalho.nroEstacoes, cabecalho.nroParesEstacao);
     fwrite(&cabecalho.status, sizeof(char), 1, fbin);
     fwrite(&cabecalho.topo, sizeof(int), 1, fbin);
     fwrite(&cabecalho.proxRRN, sizeof(int), 1, fbin);
@@ -629,15 +668,21 @@ int main(){
     int operacao, nroLinhas = 0, n;
     char arquivoBin[101];
     char arquivoCSV[101];
-    char*** matrizes = NULL;
+    char*** matrizes = malloc(sizeof(char**) * 3);
+    for(int i = 0; i < 3; i++){
+        matrizes[i] = malloc(sizeof(char*) * 200);
+    }
+    for(int i = 0; i < 200; i++){
+        matrizes[0][i] = malloc(sizeof(char) * 44);
+        matrizes[1][i] = malloc(sizeof(char) * 11);
+        matrizes[2][i] = malloc(sizeof(char) * 11);
+    }
     while(scanf("%d", &operacao) == 1){
         switch(operacao){
             case 1:
                 scanf("%100s %100s", arquivoCSV, arquivoBin);
-                nroLinhas = createTable(arquivoCSV, arquivoBin, &matrizes);
-                if(nroLinhas != -1) {
+                if(createTable(arquivoCSV, arquivoBin, matrizes, &nroLinhas))
                     BinarioNaTela(arquivoBin);
-                }
                 break;
             case 2:
                 scanf("%100s",arquivoBin);
