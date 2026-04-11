@@ -453,7 +453,7 @@ void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinha
 
 void selectFromWhere(char *, int, bool);
 
-void update(char *arquivoBin, int nroUpdate, char ***matriz, int* nroLinhas){
+void update(char *arquivoBin, int nroUpdate, char ***matrizes, int* nroLinhas){
     FILE *fbin;
     if(arquivoBin == NULL || !(fbin = fopen(arquivoBin, "r+b"))){
         printf("Erro no Update!");
@@ -465,9 +465,47 @@ void update(char *arquivoBin, int nroUpdate, char ***matriz, int* nroLinhas){
     //Registro aberto para escrita deve ter status como 0 - inconsistente
     cabecalho.status = '0';
     fwrite(&cabecalho.status, sizeof(char), 1, fbin);
-    fseek(fbin, 8, SEEK_CUR);
+    fseek(fbin, 4, SEEK_CUR);
+    fread(&cabecalho.proxRRN, sizeof(int), 1, fbin);
     fread(&cabecalho.nroEstacoes, sizeof(int), 1,fbin);
     fread(&cabecalho.nroParesEstacao, sizeof(int), 1,fbin);
+
+    if(*nroLinhas <= 0){
+        for(*nroLinhas = 0; *nroLinhas<cabecalho.proxRRN; (*nroLinhas)++){
+            if((*nroLinhas)% 200 == 0 && (*nroLinhas) > 0){
+                matrizes[0] = realloc(matrizes[0], sizeof(char*) * ((*nroLinhas)+200));
+                matrizes[1] = realloc(matrizes[1], sizeof(char*) * ((*nroLinhas)+200));
+                matrizes[2] = realloc(matrizes[2], sizeof(char*) * ((*nroLinhas)+200));
+                for(int j = *nroLinhas; j < (*nroLinhas)+200; j++){
+                    matrizes[0][j] = malloc(sizeof(char) * 44);
+                    matrizes[1][j] = malloc(sizeof(char) * 11);
+                    matrizes[2][j] = malloc(sizeof(char) * 11);
+                }
+            }
+            int temp;
+            char rem;
+            fread(&rem, sizeof(char), 1, fbin);
+            if(rem == '0'){
+                fseek(fbin,4,SEEK_CUR);
+                fread(&temp, sizeof(int), 1, fbin);
+                sprintf(matrizes[1][*nroLinhas], "%d", temp);
+                fseek(fbin,4,SEEK_CUR);
+                fread(&temp, sizeof(int), 1, fbin);
+                if(temp == -1) strcpy(matrizes[2][*nroLinhas], "");
+                else sprintf(matrizes[2][*nroLinhas], "%d", temp);
+                fseek(fbin,12,SEEK_CUR);
+                fread(&temp, sizeof(int), 1, fbin);
+                fread(matrizes[0][*nroLinhas], sizeof(char), temp, fbin);
+                fseek(fbin, 17 + (*nroLinhas + 1) * tamRegistro, SEEK_SET);
+                matrizes[0][*nroLinhas][temp] = '\0';
+            }else{
+                fseek(fbin, 17 + (*nroLinhas + 1) * tamRegistro, SEEK_SET);
+                --*nroLinhas;
+            }
+        }
+    }
+
+
     for(int i = 0; i<nroUpdate; ++i) {
         int cont = 0;
         int quantAnds = 1;
@@ -504,6 +542,15 @@ void update(char *arquivoBin, int nroUpdate, char ***matriz, int* nroLinhas){
         fseek(fbin,17,SEEK_SET);
 
         char removido;
+        int quantAndsUpdate;
+        scanf("%d", &quantAndsUpdate);
+        char nomeCamposUpdate[quantAndsUpdate][23];
+        char valoresCamposUpdate[quantAndsUpdate][46];
+        for(int j = 0; j < quantAndsUpdate; j++){
+            scanf(" %s", nomeCamposUpdate[j]);
+            ScanQuoteString(valoresCamposUpdate[j]);
+        }
+
         while(fread(&removido, 1, 1, fbin) == 1){
             if(removido == '1') {
                 ++cont;
@@ -545,72 +592,162 @@ void update(char *arquivoBin, int nroUpdate, char ***matriz, int* nroLinhas){
                     ok = 0;
                 }
             }
+            
             if(ok){
-                int quantAndsUpdate;
-                scanf("%d", &quantAndsUpdate);
                 for(int j = 0; j<quantAndsUpdate; ++j) {
-                    char nomeCampo[23];
-                    scanf(" %s", nomeCampo);
-                    char valorCampo[46];
-                    ScanQuoteString(valorCampo);
-                    if(strcmp(nomeCampo, "nomeEstacao")==0) {
-                        tamNomeEstacao = strlen(valorCampo);
-                        strcpy(nomeCampos[0], valorCampo);
+                    if(strcmp(nomeCamposUpdate[j], "nomeEstacao")==0) {
+
+                        fseek(fbin, 46+cont*tamRegistro, SEEK_SET);
+                        fread(&tamNomeEstacao, sizeof(int), 1, fbin);
+                        char nomeEstacao[44];
+                        fread(nomeEstacao, sizeof(char), tamNomeEstacao, fbin);
+                        nomeEstacao[tamNomeEstacao] = '\0';
+                        int contador = 0;
+                        for(int k = 0; k < *nroLinhas; k++){
+                            if(!strcmp(matrizes[0][k], nomeEstacao)){
+                                contador++;
+                                if(contador>1){
+                                    break;
+                                }
+                            }
+                            if(k+1 == *nroLinhas){
+                                cabecalho.nroEstacoes--;
+                            }
+                        }
+
+                        tamNomeEstacao = strlen(valoresCamposUpdate[j]);
+                        strcpy(nomeCampos[0], valoresCamposUpdate[j]);
                         cabecalho.nroEstacoes++;
                         for(int k = 0; k < *nroLinhas; k++){
-                            if(!strcmp(matriz[0][k], valorCampo)){
+                            if(!strcmp(matrizes[0][k], valoresCamposUpdate[j])){
                                 cabecalho.nroEstacoes--;
                                 break;
                             }
                         }
-                        strcpy(matriz[0][cont], valorCampo);
-                    } else if(strcmp(nomeCampo, "nomeLinha")==0) {
-                        tamNomeLinha = strlen(valorCampo);
-                        strcpy(nomeCampos[1], valorCampo);
-                    } else if(strcmp(nomeCampo, "codEstacao")==0) {
+                        strcpy(matrizes[0][cont], valoresCamposUpdate[j]);
+                    } else if(strcmp(nomeCamposUpdate[j], "nomeLinha")==0) {
+                        tamNomeLinha = strlen(valoresCamposUpdate[j]);
+                        strcpy(nomeCampos[1], valoresCamposUpdate[j]);
+                    } else if(strcmp(nomeCamposUpdate[j], "codEstacao")==0) {
+                        
+                        fseek(fbin, 22+cont*tamRegistro, SEEK_SET);
+                        int codEstacao;
+                        fread(&codEstacao, sizeof(int), 1, fbin);
+                        char codEstacao2[11];
+                        if(codEstacao == -1){
+                            strcpy(codEstacao2, "");
+                        }else{
+                            sprintf(codEstacao2, "%d", codEstacao);
+                        }
+                        fseek(fbin, 4, SEEK_CUR);
+                        int codProxEstacao;
+                        fread(&codProxEstacao, sizeof(int), 1, fbin);
+                        char codProxEstacao2[11];
+                        if(codProxEstacao == -1){
+                            strcpy(codProxEstacao2, "");
+                        }else{
+                            sprintf(codProxEstacao2, "%d", codProxEstacao);
+                        }
+                        int contador = 0;
+                        for(int k = 0; k < *nroLinhas; k++){
+                            if((!strcmp(matrizes[1][k], codEstacao2) && !strcmp(matrizes[2][k], codProxEstacao2)) || (!strcmp(matrizes[2][k], codEstacao2) && !strcmp(matrizes[1][k], codProxEstacao2))){
+                                contador++;
+                                if(contador>1){
+                                    break;
+                                }
+                            }
+                            if(k+1 == *nroLinhas){
+                                cabecalho.nroParesEstacao--;
+                            }
+                        }
+
+
                         cabecalho.nroEstacoes++;
                         for(int k = 0; k < *nroLinhas; k++){
-                            if(!strcmp(matriz[1][k], valorCampo) && !strcmp(matriz[2][k], nomeCampos[4])){
+                            if(!strcmp(matrizes[1][k], valoresCamposUpdate[j]) && !strcmp(matrizes[2][k], nomeCampos[4])){
                                 cabecalho.nroParesEstacao--;
                                 break;
                             }
                         }
-                        strcpy(matriz[1][cont], valorCampo);
-                        strcpy(nomeCampos[2], valorCampo);
-                    } else if(strcmp(nomeCampo, "codLinha")==0) {
-                        strcpy(nomeCampos[3], valorCampo);
-                    } else if(strcmp(nomeCampo, "codProxEstacao")==0) {
+                        strcpy(matrizes[1][cont], valoresCamposUpdate[j]);
+                        strcpy(nomeCampos[2], valoresCamposUpdate[j]);
+                    } else if(strcmp(nomeCamposUpdate[j], "codLinha")==0) {
+                        strcpy(nomeCampos[3], valoresCamposUpdate[j]);
+
+                    } else if(strcmp(nomeCamposUpdate[j], "codProxEstacao")==0) {
+
+                        fseek(fbin, 22+cont*tamRegistro, SEEK_SET);
+                        int codEstacao;
+                        fread(&codEstacao, sizeof(int), 1, fbin);
+                        char codEstacao2[11];
+                        if(codEstacao == -1){
+                            strcpy(codEstacao2, "");
+                        }else{
+                            sprintf(codEstacao2, "%d", codEstacao);
+                        }
+                        fseek(fbin, 4, SEEK_CUR);
+                        int codProxEstacao;
+                        fread(&codProxEstacao, sizeof(int), 1, fbin);
+                        char codProxEstacao2[11];
+                        if(codProxEstacao == -1){
+                            strcpy(codProxEstacao2, "");
+                        }else{
+                            sprintf(codProxEstacao2, "%d", codProxEstacao);
+                        }
+                        int contador = 0;
+                        for(int k = 0; k < *nroLinhas; k++){
+                            if((!strcmp(matrizes[1][k], codEstacao2) && !strcmp(matrizes[2][k], codProxEstacao2)) || (!strcmp(matrizes[2][k], codEstacao2) && !strcmp(matrizes[1][k], codProxEstacao2))){
+                                contador++;
+                                if(contador>1){
+                                    break;
+                                }
+                            }
+                            if(k+1 == *nroLinhas){
+                                cabecalho.nroParesEstacao--;
+                            }
+                        }
+
                         cabecalho.nroEstacoes++;
                         for(int k = 0; k < *nroLinhas; k++){
-                            if(!strcmp(matriz[2][k], valorCampo) && !strcmp(matriz[1][k], nomeCampos[2])){
+                            if(!strcmp(matrizes[2][k], valoresCamposUpdate[j]) && !strcmp(matrizes[1][k], nomeCampos[2])){
                                 cabecalho.nroParesEstacao--;
                                 break;
                             }
                         }
-                        strcpy(matriz[2][cont], valorCampo);
-                        strcpy(nomeCampos[4], valorCampo);
-                    } else if(strcmp(nomeCampo, "distProxEstacao")==0) {
-                        strcpy(nomeCampos[5], valorCampo);
-                    } else if(strcmp(nomeCampo, "codLinhaIntegra")==0) {
-                        strcpy(nomeCampos[6], valorCampo);
-                    } else if(strcmp(nomeCampo, "codEstIntegra")==0) {
-                        strcpy(nomeCampos[7], valorCampo);
+                        strcpy(matrizes[2][cont], valoresCamposUpdate[j]);
+                        strcpy(nomeCampos[4], valoresCamposUpdate[j]);
+
+                    } else if(strcmp(nomeCamposUpdate[j], "distProxEstacao")==0) {
+                        strcpy(nomeCampos[5], valoresCamposUpdate[j]);
+                    } else if(strcmp(nomeCamposUpdate[j], "codLinhaIntegra")==0) {
+                        strcpy(nomeCampos[6], valoresCamposUpdate[j]);
+                    } else if(strcmp(nomeCamposUpdate[j], "codEstIntegra")==0) {
+                        strcpy(nomeCampos[7], valoresCamposUpdate[j]);
                     }
                 }
-                fseek(fbin, 22+cont*tamRegistro, SEEK_SET);
-                int codEstacao = (!strcmp(nomeCampos[2], "NULO") || !strcmp(nomeCampos[2], "")) ? -1 : atoi(nomeCampos[2]);
-                fwrite(&codEstacao, sizeof(int), 1, fbin);
-                int codLinha = (!strcmp(nomeCampos[3], "NULO") || !strcmp(nomeCampos[3], "")) ? -1 : atoi(nomeCampos[3]);
-                fwrite(&codLinha, sizeof(int), 1, fbin);
-                int codProxEstacao = (!strcmp(nomeCampos[4], "NULO") || !strcmp(nomeCampos[4], "")) ? -1 : atoi(nomeCampos[4]);
-                fwrite(&codProxEstacao, sizeof(int), 1, fbin);
-                int distProxEstacao = (!strcmp(nomeCampos[5], "NULO") || !strcmp(nomeCampos[5], "")) ? -1 : atoi(nomeCampos[5]);
-                fwrite(&distProxEstacao, sizeof(int), 1, fbin);
-                int codLinhaIntegra = (!strcmp(nomeCampos[6], "NULO") || !strcmp(nomeCampos[6], "")) ? -1 : atoi(nomeCampos[6]);
-                fwrite(&codLinhaIntegra, sizeof(int), 1, fbin);
-                int codEstIntegra = (!strcmp(nomeCampos[7], "NULO") || !strcmp(nomeCampos[7], "")) ? -1 : atoi(nomeCampos[7]);
-                fwrite(&codEstIntegra, sizeof(int), 1, fbin);
 
+
+                int codEstacao = (!strcmp(nomeCampos[2], "NULO") || !strcmp(nomeCampos[2], "")) ? -1 : atoi(nomeCampos[2]);
+                
+                int codLinha = (!strcmp(nomeCampos[3], "NULO") || !strcmp(nomeCampos[3], "")) ? -1 : atoi(nomeCampos[3]);
+                
+                int codProxEstacao = (!strcmp(nomeCampos[4], "NULO") || !strcmp(nomeCampos[4], "")) ? -1 : atoi(nomeCampos[4]);
+                
+                int distProxEstacao = (!strcmp(nomeCampos[5], "NULO") || !strcmp(nomeCampos[5], "")) ? -1 : atoi(nomeCampos[5]);
+                
+                int codLinhaIntegra = (!strcmp(nomeCampos[6], "NULO") || !strcmp(nomeCampos[6], "")) ? -1 : atoi(nomeCampos[6]);
+                
+                int codEstIntegra = (!strcmp(nomeCampos[7], "NULO") || !strcmp(nomeCampos[7], "")) ? -1 : atoi(nomeCampos[7]);
+                
+
+                
+                fseek(fbin, 22+cont*tamRegistro, SEEK_SET);
+                fwrite(&codEstacao, sizeof(int), 1, fbin);
+                fwrite(&codLinha, sizeof(int), 1, fbin);
+                fwrite(&codProxEstacao, sizeof(int), 1, fbin);
+                fwrite(&distProxEstacao, sizeof(int), 1, fbin);
+                fwrite(&codLinhaIntegra, sizeof(int), 1, fbin);
+                fwrite(&codEstIntegra, sizeof(int), 1, fbin);
                 fwrite(&tamNomeEstacao, sizeof(int), 1, fbin);
                 fwrite(nomeCampos[0], sizeof(char), tamNomeEstacao, fbin);
                 fwrite(&tamNomeLinha, sizeof(int), 1, fbin);
@@ -623,6 +760,7 @@ void update(char *arquivoBin, int nroUpdate, char ***matriz, int* nroLinhas){
                 }
                 lixo[contByte] = '\0';
                 fwrite(lixo, sizeof(char), contByte, fbin);
+
             }
             
             for(int j = 0; j<8; ++j) {
@@ -640,7 +778,7 @@ void update(char *arquivoBin, int nroUpdate, char ***matriz, int* nroLinhas){
     fseek(fbin, 0, SEEK_SET);
     fwrite(&cabecalho.status, sizeof(char), 1, fbin);
     fseek(fbin, 8, SEEK_CUR);
-    fwrite(&cabecalho.nroEstacoes, sizeof(int), 2, fbin);
+    fwrite(&cabecalho.nroEstacoes, sizeof(int), 1, fbin);
     fwrite(&cabecalho.nroParesEstacao, sizeof(int), 1, fbin);
     fclose(fbin);
 }
