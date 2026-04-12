@@ -24,28 +24,35 @@ bool createTable(char* csv, char* bin, char*** matrizes, int* nroLinhas){
         fclose(fbin);
         return false;
     }
-    //Começam em -1 para poderem iterarem corretamente
+    //Valores iniciais do cabecalho
     CABECALHO cabecalho = {'0', -1, 0, 0, 0};
     fseek(fcsv, 101, SEEK_SET); //Ignora a primeira linha do CSV.
+    //44 é a maior string que pode ser inserida de acordo com a especificação do projeto+\0
+    //11 é a representação em string do maior valor de int + \0
     char codLin[11], nomeLin[44], distanciaProx[11], codLinInteg[11], codEstInteg[11];
     
 
     *nroLinhas = 0;
     int contVariavel = 0;
     REGISTRO registro;
-    //Colocando valores iniciais para ir para a inserção dos inserts
+    //Colocando valores iniciais do cabecalho
     atualizaCabecalho(cabecalho, fbin);
-    //Lê cada letra do documento
     int ch = 0;
     int cont = 0;
 
 
     while(ch != EOF){
+        //Lê cada letra do documento
         ch = fgetc(fcsv);
+        //Se for \r ignora o byte
         if(ch == '\r'){
             continue;
         }
+        //contaVariavel norteia qual campo está sendo lido
         switch(contVariavel){
+            //Os 7 primeiros campos são terminados por vígula
+            //O último pode ser terminado por \n ou EOF
+            //Caso o final do campo seja tingido é colocado \0 no fim da strin lida
             case 0:
                 matrizes[1][*nroLinhas][cont] = ch!=',' ? ch : '\0';
                 break;
@@ -71,24 +78,27 @@ bool createTable(char* csv, char* bin, char*** matrizes, int* nroLinhas){
                 codEstInteg[cont] = (ch!='\n' && ch != EOF) ? ch : '\0';
                 break;
         }
+        //Conatdor para passar para próximo byte da string
         cont++;
         if(ch != '\n' && ch != EOF){
             if(ch == ','){
+                //Se chegou ao final de um campo que não é o final
+                //De uma linha, contVariavel aumenta em 1, mostrando que deveria ler o próximo campo
                 contVariavel++;
                 cont = 0;
             }
             continue;
         }
+        //Se chegar no final da linha o registro é escrito no arquivo
         cont = 0;
         contVariavel = 0;
-        //atoi de string vazia retorna 0
+        //O registro acabou de ser criado então seu campo removido e proximo são por padrão 0 e -1
         registro.removido = '0';
         registro.proximo = -1;
-        if(!strlen(matrizes[1][*nroLinhas])){
-            registro.codEstacao = -1;
-        }else{
-            registro.codEstacao = atoi(matrizes[1][*nroLinhas]);
-        }
+        /*Em cada campo é feita a verificação se o valor inserido é diferente de nulo
+        Com esceção dos campos codEstacao e nomeEstacao que não podem ser nulos.
+        Caso algum dos campos seja nulo, seu valor passa a ser -1*/
+        registro.codEstacao = atoi(matrizes[1][*nroLinhas]);
         if(!strlen(codLin)){
             registro.codLinha = -1;
         }else{
@@ -119,15 +129,18 @@ bool createTable(char* csv, char* bin, char*** matrizes, int* nroLinhas){
         strcpy(registro.nomeEstacao, matrizes[0][*nroLinhas]);
         strcpy(registro.nomeLinha, nomeLin);
 
+        //Chamad da função para escrita no registro
         escritaRegistro(registro, cabecalho.proxRRN*tamRegistro+17, fbin);
+        //Aumenta o número do próximo RRN
         cabecalho.proxRRN++;
 
 
-
+        //Caso o nome da estação já exista, o nroEstacoes não sofre alteração
         cabecalho.nroEstacoes++;cabecalho.nroParesEstacao++;
         if(duplicidadeEstacoes(matrizes, nroLinhas, matrizes[0][*nroLinhas])){
             cabecalho.nroEstacoes--;
         }
+        //O mesmo para caso o par já exista
         if(duplicidadeParesEstacao(matrizes, nroLinhas, matrizes[2][*nroLinhas], matrizes[1][*nroLinhas])){
             cabecalho.nroParesEstacao--;
         }
@@ -135,12 +148,14 @@ bool createTable(char* csv, char* bin, char*** matrizes, int* nroLinhas){
         if((*nroLinhas)% 200 == 0 && (*nroLinhas) > 0){
             realocacao(&matrizes, nroLinhas);
         }
+        //Aumenta o número de linhas usadas pela matriz
         (*nroLinhas)++;
         
     }
+    //Atualiza o valor do cabecalho
     cabecalho.status = '1';
     atualizaCabecalho(cabecalho, fbin);
-
+    //Fecha as streams
     fclose (fcsv);
     fclose(fbin);
     return true;
@@ -153,16 +168,21 @@ void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinha
         printf("Erro no Insert!");
         return;
     }
+    //Strings dos campos usados, os nomeEstacoa e nomeLinha tem 2 byes a mais por conat das aspas do input
     char codEstacao[11], nomeEstacao[46], codLinha[11], nomeLinha[46], codProxEstacao[11], distProxEstacao[11], codLinhaIntegra[11], codEstIntegra[11];
     REGISTRO registro;
+    //Leitura do cabecalho do arquivo
     CABECALHO cabecalho = leituraCabecalho(fbin);
     int proxInsercao;
-    //Registro aberto para escrita deve ter status como 0 - inconsistente
-
+    //Caso a matriz não tenha sido ainda preenchida com os valores do arquivo
     if(*nroLinhas <= 0){
         populaMatriz(matrizes, nroLinhas, fbin, cabecalho.proxRRN);
     }
+    //O loop ocorre de acordo com quantas inserções o usuário pretende fazer
     for(int i = 0; i < nroInsert; i++){
+        //O proxInsercao marca onde será inserido o próximo registro
+        //podendo ser no final do arquivo ou seguir a pilha de remoções
+        //Caso haja registros deletados.
         proxInsercao = cabecalho.topo != -1 ? cabecalho.topo : cabecalho.proxRRN;
         ScanQuoteString(codEstacao);
         ScanQuoteString(nomeEstacao);
@@ -172,10 +192,12 @@ void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinha
         ScanQuoteString(distProxEstacao);
         ScanQuoteString(codLinhaIntegra);
         ScanQuoteString(codEstIntegra);
+        //Verificação se a entrada do susário é válida
         if(!strcmp(codEstacao, "") || !strcmp(nomeEstacao, "")){
             printf("Os 2 primeiros campos não podem ser nulos!\n");
             continue;
         }
+        //Preenchimento da variável registro com os valores lidos
         registro.codEstacao = atoi(codEstacao);
         strcpy(registro.nomeEstacao, nomeEstacao);
         strcpy(registro.nomeLinha, nomeLinha);
@@ -209,19 +231,25 @@ void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinha
         registro.removido = '0';
         registro.proximo = -1;
 
+        //Se será adicionado no final aumenta o número de proxRRN
         if(cabecalho.proxRRN == proxInsercao){
             cabecalho.proxRRN++;
-        }else{
+        }
+        //Caso contrário desemilha o vaalor da pilha
+        else{
             fseek(fbin, cabecalho.topo*tamRegistro+18,SEEK_SET);
+            //Lê o campo próximo do registro removido e substitui no topo do cabecalho
             fread(&cabecalho.topo, sizeof(int), 1, fbin);
         }
-        
+        //Escrita do registro no arquivo
         escritaRegistro(registro, proxInsercao*tamRegistro+17,fbin);
 
+        //Caso a matriz tenha chegado no limite é alocad mais memória
         if((*nroLinhas)% 200 == 0 && (*nroLinhas) > 0){
             realocacao(&matrizes, nroLinhas);
         }
 
+        //Verificação se o par e o nome da estação já existem
         cabecalho.nroEstacoes++;cabecalho.nroParesEstacao++;
         //Ver se precisa aumentar nroEstacoes e nroParesEstacao
         if(duplicidadeEstacoes(matrizes, nroLinhas, nomeEstacao)){
@@ -231,14 +259,17 @@ void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinha
             cabecalho.nroParesEstacao--;
         }
 
-
+        //O nome, codigo e código da próxima estação são escritos na matriz
         strcpy(matrizes[0][*nroLinhas], nomeEstacao);
         strcpy(matrizes[1][*nroLinhas], codEstacao);
         strcpy(matrizes[2][*nroLinhas], codProxEstacao);
+        //O número de linhas aumenta
         (*nroLinhas)++;
     }
+    //Atualização do cabeçalho do arquivo
     cabecalho.status = '1';
     atualizaCabecalho(cabecalho, fbin);
+    //Fechamento da stream
     fclose(fbin);
 }
 

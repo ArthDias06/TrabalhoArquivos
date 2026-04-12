@@ -1,6 +1,7 @@
 #ifndef REGISTRO_H
 #define REGISTRO_H
     
+    //Criação das structs de registro de cabecalho
     typedef struct cabecalho{
         char status;
         int topo;
