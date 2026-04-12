@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include "fornecidas.h"
 
 /*
  * Você não precisa entender o código dessa função.

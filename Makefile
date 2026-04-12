@@ -1,5 +1,5 @@
 all:
-	gcc programaTrab.c -o programaTrab
+	gcc programaTrab.c registro.c matriz.c fornecidas.c -o programaTrab
 
-run: all
+run:
 	./programaTrab
