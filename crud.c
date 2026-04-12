@@ -368,24 +368,24 @@ void update(char *arquivoBin, int nroUpdate, char ***matrizes, int* nroLinhas){
                         registro.codLinha = convertido;
                     } else if(strcmp(nomeCamposUpdate[j], "codProxEstacao")==0) {
 
-                        char codEstacaoOld[11], codProxOld[11];
+                        char codEstacaoAnt[11], codProxAnt[11];
                         if(registro.codEstacao == -1) {
-                            strcpy(codEstacaoOld, "");
+                            strcpy(codEstacaoAnt, "");
                         }
                         else { 
-                            sprintf(codEstacaoOld, "%d", registro.codEstacao);
+                            sprintf(codEstacaoAnt, "%d", registro.codEstacao);
                         }
                         
                         if(registro.codProxEstacao == -1) {
-                            strcpy(codProxOld, "");
+                            strcpy(codProxAnt, "");
                         }
                         else {
-                            sprintf(codProxOld, "%d", registro.codProxEstacao);
+                            sprintf(codProxAnt, "%d", registro.codProxEstacao);
                         }
 
                         int contador = 0;
                         for(int k = 0; k < *nroLinhas; k++){
-                            if((!strcmp(matrizes[1][k], codEstacaoOld) && !strcmp(matrizes[2][k], codProxOld)) || (!strcmp(matrizes[2][k], codEstacaoOld) && !strcmp(matrizes[1][k], codProxOld))) {
+                            if((!strcmp(matrizes[1][k], codEstacaoAnt) && !strcmp(matrizes[2][k], codProxAnt)) || (!strcmp(matrizes[2][k], codEstacaoAnt) && !strcmp(matrizes[1][k], codProxAnt))) {
                                 contador++;
                                 if(contador>1) {
                                     break;
@@ -523,8 +523,8 @@ void selectFromWhere(char *arquivoBin, int quantBuscas, bool temWhere) {
     fclose(fbin);
 }
 
-// Função que representa o DELETE FROM WHERE
-bool deleteFromWhere(char *arquivoBin, int quantRemocoes) {
+// Função que representa o DELETE FROM WHERE. Retorna se houve erro (1) ou não (0)
+bool deleteFromWhere(char *arquivoBin, int quantRemocoes, char ***matrizes, int *nroLinhas) {
     // Processamento padrão de arquivos
     FILE *fbin;
     if(arquivoBin == NULL || !(fbin = fopen(arquivoBin, "r+b"))){
@@ -533,6 +533,10 @@ bool deleteFromWhere(char *arquivoBin, int quantRemocoes) {
     }
 
     CABECALHO cabecalho = lerCabecalho(fbin);
+
+    if(*nroLinhas <= 0){
+        populaMatriz(matrizes, nroLinhas, fbin, cabecalho.proxRRN);
+    }
 
     // Fazemos os "OR's" da remoção (ou quantidade de remoções diferentes a serem feitas)
     for(int i = 0; i<quantRemocoes; ++i) {
@@ -571,55 +575,38 @@ bool deleteFromWhere(char *arquivoBin, int quantRemocoes) {
                 fwrite(&marcarRemocao, 1, 1, fbin);
                 fwrite(&cabecalho.topo, 4, 1, fbin);
                 cabecalho.topo = cont;
-                long posAtual = ftell(fbin);
-                bool nomeEstacaoAindaExiste = false;
-                bool parAindaExiste = false;
-                
-                fseek(fbin, 17, SEEK_SET);
-
-                char removido;
-                int cont = 0;
-                // Percorremos o binário para verificar se o cabeçalho deve ou não ser alterado (verificamos se o par e o nome da estação ainda existem)
-                while(fread(&removido, 1, 1, fbin) == 1) {
-                    if(removido == '0') {
-                        int camposInt[7];
-                        fseek(fbin, 4, SEEK_CUR);
-                        
-                        for(int k=0; k<7; ++k) {
-                            fread(&camposInt[k], 4, 1, fbin);
-                        }
-                        
-                        int tamNome = camposInt[6];
-                        char nomeEstacao[50] = {0};
-                        
-                        if(tamNome > 0) {
-                            fread(nomeEstacao, 1, tamNome, fbin);
-                        }
-                        if(strcmp(nomeEstacao, registro.nomeEstacao) == 0) {
-                            nomeEstacaoAindaExiste = true;
-                        }
-                        
-                        
-                        if(camposInt[0] == registro.codEstacao && camposInt[2] == registro.codProxEstacao) {
-                            parAindaExiste = true;
-                        }
-                        if(nomeEstacaoAindaExiste && parAindaExiste) {
-                            break;
-                        }
-                    }
-                    ++cont;
-                    fseek(fbin, tamHeader + (cont * tamRegistro), SEEK_SET);
+                char codEstacaoAnt[11], codProxAnt[11];
+                if(registro.codEstacao == -1) {
+                    strcpy(codEstacaoAnt, "");
                 }
-                
-                // Atualizamos o cabeçalho conforme necessário
-                if(!nomeEstacaoAindaExiste) {
+                else {
+                    sprintf(codEstacaoAnt, "%d", registro.codEstacao);
+                }
+                if(registro.codProxEstacao == -1) {
+                    strcpy(codProxAnt, ""); 
+                } else {
+                    sprintf(codProxAnt, "%d", registro.codProxEstacao);
+                }
+                // Apagamos o registro da matriz
+                for(int k = 0; k < *nroLinhas; ++k) {
+                    // Verificamos se o registro na matriz corresponde ao que estamos lidando com
+                    if(!strcmp(matrizes[0][k], registro.nomeEstacao) && !strcmp(matrizes[1][k], codEstacaoAnt) && !strcmp(matrizes[2][k], codProxAnt)) {
+                        // Limpamos as informações do registro na matriz
+                        strcpy(matrizes[0][k], "");
+                        strcpy(matrizes[1][k], "");
+                        strcpy(matrizes[2][k], "");
+                        // Se encontramos o registro na matriz, paramos
+                        break;
+                    }
+                }
+
+                // Checamos se as duplicidades ainda existem na matriz e atualizamos o cabeçalho conforme necessidade
+                if(!duplicidadeEstacoes(matrizes, nroLinhas, registro.nomeEstacao)) {
                     --cabecalho.nroEstacoes;
                 }
-                if(!parAindaExiste) {
+                if(!duplicidadeParesEstacao(matrizes, nroLinhas, codProxAnt, codEstacaoAnt)) {
                     --cabecalho.nroParesEstacao;
                 }
-                // Reposicionamos o cursor para a próxima leitura
-                fseek(fbin, posAtual, SEEK_SET);
             }
             
             finalizarBusca(fbin,&cont);

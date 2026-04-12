@@ -57,8 +57,11 @@ void realocacao(char**** matrizes, int* nroLinhas){
 
 //Em casos que o createTable não é chamado, a matriz precisa ter os dados do arquivo existente.
 void populaMatriz(char*** matrizes, int* nroLinhas, FILE* fbin, int proxRRN){
+    *nroLinhas = 0;
+    // Começamos no 1° registro
+    fseek(fbin,17,SEEK_SET);
     //Percorre todo o arquivo
-    for(*nroLinhas = 0; *nroLinhas<proxRRN; (*nroLinhas)++){
+    for(int i = 0; i<proxRRN; ++i) {
         //Se tiveer alcançado o limite da matriz aumenta o espaço permitido
         if((*nroLinhas)% 200 == 0 && (*nroLinhas) > 0){
             realocacao(&matrizes, nroLinhas);
@@ -91,13 +94,9 @@ void populaMatriz(char*** matrizes, int* nroLinhas, FILE* fbin, int proxRRN){
             //Finaliza a string com \0
             matrizes[0][*nroLinhas][temp] = '\0';
             //Vai para o próximo registro
-            fseek(fbin, 17 + (*nroLinhas + 1) * 80, SEEK_SET);
-        }else{
-            //Caso o registro tenha sido removido apenas vai para o próximo registro
-            //E tira um do nroLinhas totais
-            fseek(fbin, 17 + (*nroLinhas + 1) * 80, SEEK_SET);
-            --*nroLinhas;
+            ++(*nroLinhas);
         }
+        fseek(fbin, 17 + (i+1) * 80, SEEK_SET);
     }
 }
 
@@ -114,6 +113,9 @@ bool duplicidadeEstacoes(char*** matrizes, int* nroLinhas, char* nomeEstacao){
 //Função para verificar se o par já existe na matriz
 bool duplicidadeParesEstacao(char*** matrizes, int* nroLinhas, char* codProxEstacao, char* codEstacao){
     for(int i = 0; i < *nroLinhas; i++){
+        if (strcmp(matrizes[0][i], "") == 0) {
+            continue;
+        }
         /*São feitas as seguintes verificacoes:
         1-Se o codProxEstacao é nulo
         2-Se o codEstacao está presente no conjunto 1 da matriz e se o codProxEstacao está no conjunto 2 da matriz

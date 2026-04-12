@@ -10,6 +10,7 @@ int main(){
     char*** matrizes = criaMatriz();
     while(scanf("%d", &operacao) == 1){
         switch(operacao){
+            // Caso 1: Comando CREATE TABLE
             case 1:
                 scanf("%100s %100s", arquivoCSV, arquivoBin);
                 if(createTable(arquivoCSV, arquivoBin, matrizes, &nroLinhas))
@@ -30,16 +31,18 @@ int main(){
             case 4:
                 int n1;
                 scanf("%100s %d",arquivoBin,&n1);
-                bool erro = deleteFromWhere(arquivoBin,n1);
+                bool erro = deleteFromWhere(arquivoBin,n1,matrizes,&nroLinhas);
                 if(!erro) {
                     BinarioNaTela(arquivoBin);
                 }
                 break;
+            // Caso 5: Comando INSERT INTO
             case 5:
                 scanf("%100s %d", arquivoBin, &n);
                 insertInto(arquivoBin, n, matrizes, &nroLinhas);
                 BinarioNaTela(arquivoBin);
                 break;
+            // Caso 6: Comando UPDATE com cláusula WHERE
             case 6:
                 scanf("%100s %d", arquivoBin, &n);
                 update(arquivoBin, n, matrizes, &nroLinhas);

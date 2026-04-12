@@ -16,6 +16,6 @@
     void insertInto(char *, int,  char ***, int *);
     void update(char *, int, char ***, int *);
     void selectFromWhere(char *, int, bool);
-    bool deleteFromWhere(char *,int);
+    bool deleteFromWhere(char *,int, char ***, int *);
 
 #endif
