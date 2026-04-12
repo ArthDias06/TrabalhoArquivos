@@ -1,6 +1,9 @@
 #ifndef REGISTRO_H
+#define tamRegistro 80
+#define tamHeader 17
 #define REGISTRO_H
     
+    // Definição das estruturas no binário que são utilizadas no processamento dos dados (cabeçalho e registro)
     typedef struct cabecalho{
         char status;
         int topo;
@@ -24,8 +27,23 @@
         char nomeLinha[44];
     }REGISTRO;
 
-    void atualizaCabecalho(CABECALHO, FILE*);
-    CABECALHO leituraCabecalho(FILE*);
-    void escritaRegistro(REGISTRO, int, FILE*);
+    void atualizarCabecalho(CABECALHO, FILE*);
+
+    CABECALHO lerCabecalho(FILE*);
+
+    void escreverRegistro(REGISTRO, int, FILE*);
+
+    void lerCondicoesBusca(int, char *[][2]);
+
+    // Função para ser chamada ao fim de todas as buscas de um comando para dar free na memória de condicoes
+    void liberarCondicoes(int, char *[][2]);
+
+    // Função para ser chamada ao fim de cada busca (cada OR do SELECT) para aumentar o contador e mover o cursor
+    void finalizarBusca(FILE *, int *);
+
+    // Função que lê o registro e retorna um booleano que responde à pergunta "o registro atende aos requisitos do WHERE?"
+    bool lerRegistroVerifica(FILE *, REGISTRO *, int, char*[][2]);
+
+    int converterStringParaInt(char *);
 
 #endif

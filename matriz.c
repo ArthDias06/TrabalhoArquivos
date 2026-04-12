@@ -80,7 +80,7 @@ bool duplicidadeEstacoes(char*** matrizes, int* nroLinhas, char* nomeEstacao){
 
 bool duplicidadeParesEstacao(char*** matrizes, int* nroLinhas, char* codProxEstacao, char* codEstacao){
     for(int i = 0; i < *nroLinhas; i++){
-        if(!strcmp(codProxEstacao, "") || !strcmp(codEstacao, matrizes[1][i]) && !strcmp(codProxEstacao, matrizes[2][i]) || !strcmp(codProxEstacao, matrizes[1][i]) && !strcmp(codEstacao, matrizes[2][i])){
+        if(!strcmp(codProxEstacao, "") || (!strcmp(codEstacao, matrizes[1][i]) && !strcmp(codProxEstacao, matrizes[2][i])) || (!strcmp(codProxEstacao, matrizes[1][i]) && !strcmp(codEstacao, matrizes[2][i]))){
             return true;
         }
     }

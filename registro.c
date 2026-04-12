@@ -1,9 +1,13 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdbool.h>
+#include "fornecidas.h"
+
+#include <stdint.h>
 #include "registro.h"
 
-void atualizaCabecalho(CABECALHO cabecalho, FILE* fbin){
+void atualizarCabecalho(CABECALHO cabecalho, FILE* fbin){
     if(fbin == NULL){
         printf("Falha no processamento do arquivo");
         return;
@@ -16,7 +20,7 @@ void atualizaCabecalho(CABECALHO cabecalho, FILE* fbin){
     fwrite(&cabecalho.nroParesEstacao, sizeof(int), 1, fbin);
 }
 
-CABECALHO leituraCabecalho(FILE* fbin){
+CABECALHO lerCabecalho(FILE* fbin){
     CABECALHO cabecalho;
     fseek(fbin,0,SEEK_SET);
     cabecalho.status = '0';
@@ -28,7 +32,7 @@ CABECALHO leituraCabecalho(FILE* fbin){
     return cabecalho;
 }
 
-void escritaRegistro(REGISTRO registro, int proxEscrita, FILE* fbin){
+void escreverRegistro(REGISTRO registro, int proxEscrita, FILE* fbin){
     fseek(fbin, proxEscrita, SEEK_SET);
     fwrite(&registro.removido, sizeof(char), 1, fbin);
     fwrite(&registro.proximo, sizeof(int), 1, fbin);
@@ -52,4 +56,143 @@ void escritaRegistro(REGISTRO registro, int proxEscrita, FILE* fbin){
         lixo[contByte] = '\0';
         fwrite(lixo, sizeof(char), contByte, fbin);
     }
+}
+
+// Função para ler um as condições de busca para os registros. Essa função lê o "WHERE" da cláusula
+void lerCondicoesBusca(int quantAnds, char *condicoes[][2]) {
+    for(int j = 0; j<quantAnds; ++j) {
+        char nomeCampo[23];
+        scanf(" %s", nomeCampo);
+        if(strcmp(nomeCampo, "nomeEstacao")==0) {
+            condicoes[j][0] = (char *)0;
+        } else if(strcmp(nomeCampo, "nomeLinha")==0) {
+            condicoes[j][0] = (char *)1;
+        } else if(strcmp(nomeCampo, "codEstacao")==0) {
+            condicoes[j][0] = (char *)2;
+        } else if(strcmp(nomeCampo, "codLinha")==0) {
+            condicoes[j][0] = (char *)3;
+        } else if(strcmp(nomeCampo, "codProxEstacao")==0) {
+            condicoes[j][0] = (char *)4;
+        } else if(strcmp(nomeCampo, "distProxEstacao")==0) {
+            condicoes[j][0] = (char *)5;
+        } else if(strcmp(nomeCampo, "codLinhaIntegra")==0) {
+            condicoes[j][0] = (char *)6;
+        } else if(strcmp(nomeCampo, "codEstIntegra")==0) {
+            condicoes[j][0] = (char *)7;
+        }
+        char valorCampo[46];
+        if(strcmp(nomeCampo, "nomeEstacao") == 0 || strcmp(nomeCampo, "nomeLinha") == 0) {
+            ScanQuoteString(valorCampo);
+            if(strcmp(valorCampo, "") == 0) {
+                strcpy(valorCampo, "NULO");
+            }
+        } else {
+            scanf(" %s", valorCampo);
+        }
+        if(!strcmp(valorCampo, "")) {
+            strcpy(valorCampo, "NULO");
+        }
+        condicoes[j][1] = malloc(strlen(valorCampo)+1);
+        strcpy(condicoes[j][1], valorCampo);
+    }
+}
+
+void liberarCondicoes(int quantAnds, char *condicoes[][2]) {
+    for(int j=0; j<quantAnds; ++j) {
+        free(condicoes[j][1]);
+    }
+}
+
+void finalizarBusca(FILE *fbin, int *cont) {
+    ++*cont;
+    fseek(fbin, tamHeader + (*cont * tamRegistro), SEEK_SET);
+}
+
+bool lerRegistroVerifica(FILE *fbin, REGISTRO *registro, int quantAnds, char *condicoes[][2]) {
+    fread(&registro->proximo, sizeof(int), 1, fbin);
+    fread(&registro->codEstacao, sizeof(int), 1, fbin);
+    fread(&registro->codLinha, sizeof(int), 1, fbin);
+    fread(&registro->codProxEstacao, sizeof(int), 1, fbin);
+    fread(&registro->distProxEstacao, sizeof(int), 1, fbin);
+    fread(&registro->codLinhaIntegra, sizeof(int), 1, fbin);
+    fread(&registro->codEstIntegra, sizeof(int), 1, fbin);
+
+    fread(&registro->tamNomeEstacao, sizeof(int), 1, fbin);
+    if(registro->tamNomeEstacao > 0) {
+        fread(registro->nomeEstacao, sizeof(char), registro->tamNomeEstacao, fbin);
+    }
+    registro->nomeEstacao[registro->tamNomeEstacao] = '\0';
+
+    fread(&registro->tamNomeLinha, sizeof(int), 1, fbin);
+    if(registro->tamNomeLinha > 0) {
+        fread(registro->nomeLinha, sizeof(char), registro->tamNomeLinha, fbin);
+    }
+    registro->nomeLinha[registro->tamNomeLinha] = '\0';
+
+
+    bool ok = 1;
+    for(int j=0; j<quantAnds && ok; ++j) {
+        int op = (int)(intptr_t)condicoes[j][0];
+        char *valorString = condicoes[j][1];
+        bool nulo = strcmp(valorString, "NULO") == 0;
+        int valorInt = nulo ? -1 : atoi(valorString);
+
+        switch(op) {
+            //nomeEstacao
+            case 0: 
+                if(nulo && registro->tamNomeEstacao != 0) {
+                    ok = 0;
+                }
+                else if(!nulo && strcmp(registro->nomeEstacao, valorString) != 0) {
+                    ok = 0;
+                }
+                break;
+            //nomeLinha
+            case 1:
+                if(nulo && registro->tamNomeLinha != 0) {
+                    ok = 0;
+                }
+                else if(!nulo && strcmp(registro->nomeLinha, valorString) != 0) {
+                    ok = 0;
+                }
+                break;
+            // codEstacao
+            case 2: 
+                if(registro->codEstacao != valorInt) {
+                    ok = 0;
+                }
+                break;
+            // codLinha
+            case 3: 
+                if(registro->codLinha != valorInt) {
+                    ok = 0;
+                }
+                break;
+            // codProxEstacao
+            case 4: 
+                if(registro->codProxEstacao != valorInt) {
+                    ok = 0;
+                }
+                break;
+            // distProxEstacao
+            case 5: 
+                if(registro->distProxEstacao != valorInt) {
+                    ok = 0;
+                }
+                break;
+            // codLinhaIntegra
+            case 6: 
+                if(registro->codLinhaIntegra != valorInt) {
+                    ok = 0;
+                }
+                break;
+            // codEstIntegra
+            case 7:
+                if(registro->codEstIntegra != valorInt) {
+                    ok = 0;
+                }
+                break;
+        }
+    }
+    return ok;
 }
