@@ -113,14 +113,11 @@ bool duplicidadeEstacoes(char*** matrizes, int* nroLinhas, char* nomeEstacao){
 //Função para verificar se o par já existe na matriz
 bool duplicidadeParesEstacao(char*** matrizes, int* nroLinhas, char* codProxEstacao, char* codEstacao){
     for(int i = 0; i < *nroLinhas; i++){
-        if (strcmp(matrizes[0][i], "") == 0) {
-            continue;
-        }
         /*São feitas as seguintes verificacoes:
         1-Se o codProxEstacao é nulo
-        2-Se o codEstacao está presente no conjunto 1 da matriz e se o codProxEstacao está no conjunto 2 da matriz
-        3-Se o codEstacao está presente no conjunto 2 da matriz e se o codProxEstacao está no conjunto 1 da matriz*/
-        if(!strcmp(codProxEstacao, "") || (!strcmp(codEstacao, matrizes[1][i]) && !strcmp(codProxEstacao, matrizes[2][i])) || (!strcmp(codProxEstacao, matrizes[1][i]) && !strcmp(codEstacao, matrizes[2][i]))){
+        1-Se o codEstacao está presente no conjunto 1 da matriz e se o codProxEstacao está no conjunto 2 da matriz
+        2-Se o codEstacao está presente no conjunto 2 da matriz e se o codProxEstacao está no conjunto 1 da matriz*/
+        if((!strcmp(codEstacao, matrizes[1][i]) && !strcmp(codProxEstacao, matrizes[2][i])) || (!strcmp(codProxEstacao, matrizes[1][i]) && !strcmp(codEstacao, matrizes[2][i]))){
             return true;
         }
     }
