@@ -233,32 +233,43 @@ void update(char *arquivoBin, int nroUpdate, char ***matrizes, int* nroLinhas){
         return;
     }
 
+    //Leitura do cabecalho do arquivo
     CABECALHO cabecalho = lerCabecalho(fbin);
 
+    //Se a mtriz não tiver sido preenchida ainda
     if(*nroLinhas <= 0){
         populaMatriz(matrizes, nroLinhas, fbin, cabecalho.proxRRN);
     }
 
-
+    //Passa pelo loop de acordo com quantas vezes o usuário quer atualizar registros
     for(int i = 0; i<nroUpdate; ++i) {
         int cont = 0;
+        //Variável para armazenar o número de condições dadas no where
         int quantAnds = 1;
         scanf("%d", &quantAnds);
+        //Matriz com o nome do campo e valor do campo em cada condição lida
         char *condicoes[quantAnds][2];
         lerCondicoesBusca(quantAnds,condicoes);
-
+    
         char removido;
+        //Variável para armazenar o número de valores a serem atualizados
         int quantAndsUpdate;
         scanf("%d", &quantAndsUpdate);
+        //Criação de matrizes com os nomes dos campos e valores dos campos com os
+        //valores que serão colocados na atualização
         char nomeCamposUpdate[quantAndsUpdate][23];
         char valoresCamposUpdate[quantAndsUpdate][46];
+        //Leitura dos campos e de seus valores
         for(int j = 0; j < quantAndsUpdate; j++){
             scanf(" %s", nomeCamposUpdate[j]);
             ScanQuoteString(valoresCamposUpdate[j]);
         }
+        //Ignora o cabeçalho do arquivo
         fseek(fbin,17,SEEK_SET);
+        //Lê até o final do arquivo
         while(fread(&removido, 1, 1, fbin) == 1){
-             if(removido == '1') {
+            //Ignora os removidos
+            if(removido == '1') {
                 ++cont;
                 fseek(fbin,79,SEEK_CUR);
                 continue;
@@ -266,13 +277,25 @@ void update(char *arquivoBin, int nroUpdate, char ***matrizes, int* nroLinhas){
             // Definimos o registro para lê-lo e verificar se atende aos requisitos do WHERE
             REGISTRO registro;
             registro.removido = '0';
+            //Função para a leitura de um registro
             bool ok = lerRegistroVerifica(fbin, &registro, quantAnds, condicoes);
             
+            //Caso o registro atenda ao que foi pedido é atualizado
             if(ok){
                 for(int j = 0; j<quantAndsUpdate; ++j) {
+                    //Tranforma o valor lido no valor Campos Update em int
                     int convertido = converterStringParaInt(valoresCamposUpdate[j]);
+
+                    //Caso o campo alterado seja o nome da estação é necessaŕio verificar se o nome altera o npumero de estações
                     if(strcmp(nomeCamposUpdate[j], "nomeEstacao")==0) {
                         int cont2 = 0;
+                        /*Aqui há casos a serem vistos como:
+                        1-Se o nome retirado não for de uma estação única então não há problema
+                        Mas caso contrário o número de estações deve diminuir.
+                        2-Considerando  que o número diminuiu, o próximo valor inserido
+                        deve ser pode ser único, o que aumenta o valor do número de estações
+                        ou não, o que deixa ele como está.
+                        Por isso há uma maior verificação desses casos.*/
                         for(int k = 0; k<*nroLinhas; k++){
                             if(!strcmp(matrizes[0][k], registro.nomeEstacao)){
                                 ++cont2;
@@ -284,13 +307,15 @@ void update(char *arquivoBin, int nroUpdate, char ***matrizes, int* nroLinhas){
                                 cabecalho.nroEstacoes--;
                             }
                         }
-
+                        //Aqui é verificado a repetição do nome da estação
                         ++cabecalho.nroEstacoes;
                         if(duplicidadeEstacoes(matrizes, nroLinhas, registro.nomeEstacao)){
                             --cabecalho.nroEstacoes;
                         }
                         strcpy(matrizes[0][cont], registro.nomeEstacao);
-
+                    /*Cada campo é verificado de acordo com a inserção
+                    e seus valores são adiocionados no registro de acordo com as especificações.
+                    A função sprintf tranforma um valor inteiro para string nesse caso.*/
                     } else if(strcmp(nomeCamposUpdate[j], "nomeLinha")==0) {
                         if (convertido==-1) {
                             registro.tamNomeLinha = 0;
@@ -314,7 +339,7 @@ void update(char *arquivoBin, int nroUpdate, char ***matrizes, int* nroLinhas){
                         else {
                             sprintf(codProxAnt, "%d", registro.codProxEstacao);
                         }
-
+                        //Age da mesma forma que no caso do campo nomeEstacao
                         int contador = 0;
                         for(int k = 0; k < *nroLinhas; k++){
                             if((!strcmp(matrizes[1][k], codEstacaoAnt) && !strcmp(matrizes[2][k], codProxAnt)) ||  (!strcmp(matrizes[2][k], codEstacaoAnt) && !strcmp(matrizes[1][k], codProxAnt))) {
@@ -390,17 +415,20 @@ void update(char *arquivoBin, int nroUpdate, char ***matrizes, int* nroLinhas){
                         registro.codEstIntegra = convertido;
                     }
                 }
-
+                //O registro é escrito norquivo
                 escreverRegistro(registro, 17 + (cont * 80), fbin);
 
             }
 
             finalizarBusca(fbin,&cont);
         }
+        //Libera a matriz de condições criada
         liberarCondicoes(quantAnds,condicoes);
     }
     cabecalho.status = '1';
+    //Atualiza os valores no cabeçalho
     atualizarCabecalho(cabecalho, fbin);
+    //Fechamento d astream
     fclose(fbin);
 }
 

@@ -7,12 +7,14 @@
 #include <stdint.h>
 #include "registro.h"
 
+//Função para atualizar o cabecalho de um arquivo ao final da escrita dele
 void atualizarCabecalho(CABECALHO cabecalho, FILE* fbin){
     if(fbin == NULL){
         printf("Falha no processamento do arquivo");
         return;
     }
     fseek(fbin, 0, SEEK_SET);
+    //Escreve cada campo do cabecalho individualmente
     fwrite(&cabecalho.status, sizeof(char), 1, fbin);
     fwrite(&cabecalho.topo, sizeof(int), 1, fbin);
     fwrite(&cabecalho.proxRRN, sizeof(int), 1, fbin);
@@ -20,20 +22,28 @@ void atualizarCabecalho(CABECALHO cabecalho, FILE* fbin){
     fwrite(&cabecalho.nroParesEstacao, sizeof(int), 1, fbin);
 }
 
+//Função para ler o cabecalho de um dado arquivo
 CABECALHO lerCabecalho(FILE* fbin){
     CABECALHO cabecalho;
     fseek(fbin,0,SEEK_SET);
+    //Comoas funções de busca não usam do cebcalho, ele só é chamado em funções de escrita
+    //Por conta disso aqui o status é definido como 0(inconsistente)
     cabecalho.status = '0';
     fwrite(&cabecalho.status, sizeof(char), 1, fbin);
+    //Leitura de cada campo individualmente
     fread(&cabecalho.topo, sizeof(int), 1, fbin);
     fread(&cabecalho.proxRRN, sizeof(int), 1, fbin);
     fread(&cabecalho.nroEstacoes, sizeof(int), 1,fbin);
     fread(&cabecalho.nroParesEstacao, sizeof(int), 1,fbin);
+    //Retorno do cabecalho lido
     return cabecalho;
 }
 
+//Função para escrita do registro
 void escreverRegistro(REGISTRO registro, int proxEscrita, FILE* fbin){
+    //Define o ponteiro na região da próximainserção
     fseek(fbin, proxEscrita, SEEK_SET);
+    //Escreve tudo campo a campo
     fwrite(&registro.removido, sizeof(char), 1, fbin);
     fwrite(&registro.proximo, sizeof(int), 1, fbin);
     fwrite(&registro.codEstacao, sizeof(int), 1, fbin);
@@ -46,7 +56,7 @@ void escreverRegistro(REGISTRO registro, int proxEscrita, FILE* fbin){
     fwrite(registro.nomeEstacao, sizeof(char), strlen(registro.nomeEstacao), fbin);
     fwrite(&registro.tamNomeLinha, sizeof(int), 1, fbin);
     fwrite(registro.nomeLinha, sizeof(char), strlen(registro.nomeLinha), fbin);
-
+    //No final é preenchido o restante do registro com o lixo representado por $
     int contByte = 43 - strlen(registro.nomeEstacao) - strlen(registro.nomeLinha);
     if(contByte > 0){
         char lixo[contByte+1];
