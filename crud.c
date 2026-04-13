@@ -443,7 +443,7 @@ void selectFromWhere(char *arquivoBin, int quantBuscas, bool temWhere) {
     // Fazemos os "OR's" do SELECT (isso é, cada uma das buscas)
     for(int i = 0; i<quantBuscas; ++i) {
         int cont = 0;
-        int quantAnds = 1;
+        int quantAnds = 0;
         // Se tiver cláusula WHERE (função 3), podemos ter AND - chamado de "m"/"quantidade de vezes que o par nome e valor do campo pode repetir na busca
         if(temWhere) {
             scanf("%d", &quantAnds);
