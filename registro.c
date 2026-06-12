@@ -23,26 +23,24 @@ void atualizarCabecalho(CABECALHO cabecalho, FILE* fbin){
 }
 
 //Função para ler o cabecalho de um dado arquivo
-CABECALHO lerCabecalho(FILE* fbin){
-    CABECALHO cabecalho;
+bool lerCabecalho(FILE* fbin, CABECALHO *cabecalho){
     fseek(fbin,0,SEEK_SET);
-    //Comoas funções de busca não usam do cebcalho, ele só é chamado em funções de escrita
-    //Por conta disso aqui o status é definido como 0(inconsistente)
-    cabecalho.status = '0';
-    fwrite(&cabecalho.status, sizeof(char), 1, fbin);
     //Leitura de cada campo individualmente
-    fread(&cabecalho.topo, sizeof(int), 1, fbin);
-    fread(&cabecalho.proxRRN, sizeof(int), 1, fbin);
-    fread(&cabecalho.nroEstacoes, sizeof(int), 1,fbin);
-    fread(&cabecalho.nroParesEstacao, sizeof(int), 1,fbin);
-    //Retorno do cabecalho lido
-    return cabecalho;
+    fread(&cabecalho->status, sizeof(char), 1, fbin);
+    if(cabecalho->status == '0'){
+        return false;
+    }
+    cabecalho->status = '0';
+    fwrite(&cabecalho->status, sizeof(char), 1, fbin);
+    fread(&cabecalho->topo, sizeof(int), 1, fbin);
+    fread(&cabecalho->proxRRN, sizeof(int), 1, fbin);
+    fread(&cabecalho->nroEstacoes, sizeof(int), 1,fbin);
+    fread(&cabecalho->nroParesEstacao, sizeof(int), 1,fbin);
+    return true;
 }
 
 //Função para escrita do registro
-void escreverRegistro(REGISTRO registro, int proxEscrita, FILE* fbin){
-    //Define o ponteiro na região da próximainserção
-    fseek(fbin, proxEscrita, SEEK_SET);
+void escreverRegistro(REGISTRO registro, FILE* fbin){
     //Escreve tudo campo a campo
     fwrite(&registro.removido, sizeof(char), 1, fbin);
     fwrite(&registro.proximo, sizeof(int), 1, fbin);

@@ -67,7 +67,7 @@ bool createTable(char* csv, char* bin, char*** matrizes, int* nroLinhas){
                 codEstInteg[cont] = (ch!='\n' && ch != EOF) ? ch : '\0';
                 break;
         }
-        //Conatdor para passar para próximo byte da string
+        //Contador para passar para próximo byte da string
         cont++;
         if(ch != '\n' && ch != EOF){
             if(ch == ','){
@@ -100,8 +100,8 @@ bool createTable(char* csv, char* bin, char*** matrizes, int* nroLinhas){
         strcpy(registro.nomeEstacao, matrizes[0][*nroLinhas]);
         strcpy(registro.nomeLinha, nomeLin);
 
-        //Chamad da função para escrita no registro
-        escreverRegistro(registro, cabecalho.proxRRN*tamRegistro+17, fbin);
+        //Chamada da função para escrita no registro
+        escreverRegistro(registro, fbin);
         //Aumenta o número do próximo RRN
         cabecalho.proxRRN++;
 
@@ -123,7 +123,7 @@ bool createTable(char* csv, char* bin, char*** matrizes, int* nroLinhas){
         
     }
     //Atualiza o valor do cabecalho
-    cabecalho.status = '1';
+    cabecalho.status = '1'; 
     atualizarCabecalho(cabecalho, fbin);
     //Fecha as streams
     fclose (fcsv);
@@ -142,7 +142,11 @@ void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinha
     char codEstacao[11], nomeEstacao[46], codLinha[11], nomeLinha[46], codProxEstacao[11], distProxEstacao[11], codLinhaIntegra[11], codEstIntegra[11];
     REGISTRO registro;
     //Leitura do cabecalho do arquivo
-    CABECALHO cabecalho = lerCabecalho(fbin);
+    CABECALHO cabecalho;
+    if(!lerCabecalho(fbin, &cabecalho)){
+        printf("Erro no processamento do arquivo!");
+        return;
+    }
     int proxInsercao;
 
     //Caso a matriz não tenha sido ainda preenchida com os valores do arquivo
@@ -193,8 +197,9 @@ void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinha
             fread(&cabecalho.topo, sizeof(int), 1, fbin);
         }
 
+        fseek(fbin, proxInsercao*tamRegistro+17, SEEK_SET);
         //Escrita do registro no arquivo
-        escreverRegistro(registro, proxInsercao*tamRegistro+17,fbin);
+        escreverRegistro(registro, fbin);
 
         //Caso a matriz tenha chegado no limite é alocad mais memória
         if((*nroLinhas)% 200 == 0 && (*nroLinhas) > 0){
@@ -234,7 +239,11 @@ void update(char *arquivoBin, int nroUpdate, char ***matrizes, int* nroLinhas){
     }
 
     //Leitura do cabecalho do arquivo
-    CABECALHO cabecalho = lerCabecalho(fbin);
+    CABECALHO cabecalho;
+    if(!lerCabecalho(fbin, &cabecalho)){
+        printf("Erro no processamento do arquivo!");
+        return;
+    }
 
     //Se a mtriz não tiver sido preenchida ainda
     if(*nroLinhas <= 0){
@@ -415,8 +424,9 @@ void update(char *arquivoBin, int nroUpdate, char ***matrizes, int* nroLinhas){
                         registro.codEstIntegra = convertido;
                     }
                 }
-                //O registro é escrito norquivo
-                escreverRegistro(registro, 17 + (cont * 80), fbin);
+                fseek(fbin, 17 + (cont * 80), SEEK_SET);
+                //O registro é escrito no arquivo
+                escreverRegistro(registro, fbin);
 
             }
 
@@ -438,6 +448,13 @@ void selectFromWhere(char *arquivoBin, int quantBuscas, bool temWhere) {
     FILE *fbin;
     if(arquivoBin == NULL || !(fbin = fopen(arquivoBin, "rb"))){
         printf("Erro no processamento do arquivo.\n");
+        return;
+    }
+    char status;
+    fseek(fbin, 0, SEEK_SET);
+    fread(&status, sizeof(char), 1, fbin);
+    if(status =='0'){
+        printf("Erro no processamento do arquivo!");
         return;
     }
     // Fazemos os "OR's" do SELECT (isso é, cada uma das buscas)
@@ -532,7 +549,11 @@ bool deleteFromWhere(char *arquivoBin, int quantRemocoes, char ***matrizes, int 
         return 1;
     }
 
-    CABECALHO cabecalho = lerCabecalho(fbin);
+    CABECALHO cabecalho;
+    if(!lerCabecalho(fbin, &cabecalho)){
+        printf("Erro no processamento doarquivo!");
+        return false;
+    }
 
     if(*nroLinhas <= 0){
         populaMatriz(matrizes, nroLinhas, fbin, cabecalho.proxRRN);

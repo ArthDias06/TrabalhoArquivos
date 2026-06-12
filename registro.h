@@ -29,9 +29,9 @@
 
     void atualizarCabecalho(CABECALHO, FILE*);
 
-    CABECALHO lerCabecalho(FILE*);
+    bool lerCabecalho(FILE*, CABECALHO*);
 
-    void escreverRegistro(REGISTRO, int, FILE*);
+    void escreverRegistro(REGISTRO, FILE*);
 
     void lerCondicoesBusca(int, char *[][2]);
 
