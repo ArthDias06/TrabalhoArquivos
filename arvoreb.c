@@ -1,6 +1,5 @@
-#include<stdio.h>
-#include<stdlib.h>
-#include "fornecidas.h"
+#include"arvoreb.h"
+
 #define ordem 4
 #define maxchaves ordem-1
 #define minchaves ordem/2-1
@@ -38,9 +37,9 @@ void criaRaiz(FILE* fbin, int promover, int promoverChave, ARVOREB_CABECALHO *ca
     fread(&filho, sizeof(int), 1, fbin);
     fseek(fbin, -36, SEEK_CUR);
     if(filho != -1){
-        tipoNo = 1
+        tipoNo = 1;
     }
-    else tipoNo = -1
+    else tipoNo = -1;
     //Atualiza o tipo no do antigo nó raiz no arquivo
     fwrite(&tipoNo, sizeof(int), 1, fbin);
     escreverNO(cabecalho->proxRRN, pagina);
@@ -96,7 +95,7 @@ void createIndex(char* arq, char* arvore_arq){
 
 
 int busca(FILE *fbin, int chave, int RRN){
-    if(RRN = -1){
+    if(RRN == -1){
         printf("Registro não encontrado!");
         return -1;
     }
@@ -104,82 +103,67 @@ int busca(FILE *fbin, int chave, int RRN){
         printf("Erro no processamento do arquivo!");
         return -1;
     }
-    ARVOREB_CABECALHO cabecalho;
-    PAGINA pagina;
-    fread(&cabecalho.status, sizeof(char), 1, fbin);
-    if(cabecalho.status == '0'){
-        printf("Erro no processamento do arquivo!");
-        return -1;
-    }
-    int atual;
-    //Primeiro: vai para as chaves do nó raiz, portanto
-    //o primerio RRN tem que ser o do nó raiz.
-    fseek(fbin, 17+53*RRN, SEEK_SET);
-    fread(&pagina.removido, sizeof(char), 1, fbin);
-    if(pagina.removido = '0'){
+    int pr = buscaChave(fbin, chave, RRN);
+    if(pr == -1) {
         printf("Registro não encontrado!");
-        return -1;
     }
-    fseek(fbin, 12, SEEK_CUR);
-    //Procura pela chave
-    for(int i = 0; i < 3; i++){
-        fread(&atual, sizeof(int), 1, fbin);
-        if(atual == chave){
-            fread(&RRN, sizeof(int), 1, fbin);
-            return RRN;
-        }
-        //pula para a próxima chave no nó
-        fseek(fbin, sizeof(int), SEEK_CUR);
-        if(atual > chave){
-            fseek(fbin, 8*(2-i)+4*(i+1), SEEK_CUR);
-            fread(&RRN, sizeof(int), 1, fbin);
-            return busca(fbin, chave, RRN);
-        }
-    }
-    //Se não foi encontrado no for, está depois da última chave
-    //Então vai para o último descendente
-    fseek(fbin, 12, SEEK_CUR);
-    fread(&RRN, sizeof(int), 1, fbin);
-    //Continua a busca no próximo filho
-    return busca(fbin, chave, RRN);
+    return pr;
 }
 
-bool procuraNo(int chave, PAGINA pagina, int *posicao){
-    for(int i = 0; i < pagina.nroChaves && chave > pagina.chave[i]; i++);
-    *posicao = i;
-    if(*posicao < pagina.nroChaves && chave == pagina.chave[*posicao]){
-        return true;
+PAGINA localizaNo(FILE *fbin, int RRN, int chave, int *posicao, bool *achou) {
+    PAGINA pagina = lerNO(fbin, RRN);
+    int i = 0;
+    while(i<pagina.nroChaves && chave>pagina.chave[i]) {
+        ++i;
     }
-    return false;
+    *posicao = i;
+    if(i<pagina.nroChaves && chave == pagina.chave[i]) {
+        *achou = true;
+    } else {
+        *achou = false;
+    }
+    return pagina;
 }
+
+int buscaChave(FILE *fbin, int chave, int RRN) {
+    if(RRN == -1) {
+        return -1;
+    }
+    int posicao;
+    bool achou;
+    PAGINA pagina = localizaNo(fbin, RRN, chave, &posicao, &achou);
+    if(achou) {
+        return pagina.registro[posicao];
+    }
+    return buscaChave(fbin, chave, pagina.filho[posicao]);
+}
+
 
 PAGINA ins_in_page(int chave, int filho, PAGINA pagina){
     for(int i = pagina.nroChaves-1; chave < pagina.chave[i-1] && i>0; i--){
         pagina.chave[i] = pagina.chave[i-1];
         pagina.filho[i+1] = pagina.filho[i];
+        pagina.nroChaves++;
+        pagina.chave[i] = chave;
+        pagina.filho[i+1] = filho;
     }
-    pagina.nroChaves++;
-    pagina.chave[i] = chave;
-    pagina.filho[i+1] = filho;
     return pagina;
 }
 
-
-void escreverNO(int RRN, PAGINA pagina){
-    fseek(fbin, 17+53*RRN, SEEK_SET);
-    fwrite(&pagina.removido, sizeof(char), 1, fbin);
-    fwrite(&pagina.proximo, sizeof(int), 1, fbin);
-    fwrite(&pagina.tipoNo, sizeof(int), 1, fbin);
-    fwrite(&pagina.nroChaves, sizeof(int), 1, fbin);
+void escreverNO(FILE *fArvore, int rrn, PAGINA pagina) {
+    fseek(fArvore, 17+53*rrn, SEEK_SET);
+    fwrite(&pagina.removido, sizeof(char), 1, fArvore);
+    fwrite(&pagina.proximo, sizeof(int), 1, fArvore);
+    fwrite(&pagina.tipoNo, sizeof(int), 1, fArvore);
+    fwrite(&pagina.nroChaves, sizeof(int), 1, fArvore);
     for(int i = 0; i < maxchaves; i++){
-        fwrite(&pagina.chave[i], sizeof(int), 1, fbin);
-        fwrite(&pagina.registro[i], sizeof(int), 1, fbin);
+        fwrite(&pagina.chave[i], sizeof(int), 1, fArvore);
+        fwrite(&pagina.registro[i], sizeof(int), 1, fArvore);
     }
     for(int i = 0; i < ordem; i++){
-        fwrite(&pagina.filho[i], sizeof(int), 1, fbin);
+        fwrite(&pagina.filho[i], sizeof(int), 1, fArvore);
     }
 }
-
 
 PAGINA inicializaPagina(PAGINA pagina){
     for(int j = 0; j<maxchaves; j++){
@@ -234,11 +218,10 @@ bool insert(FILE* fbin, int registro, int RRN, int chave, int *promover, int *pr
         printf("Erro no processamento do arquivo!");
         return false;
     }
-    if(cabecalho->status = '0'){
+    if(cabecalho->status == '0'){
         printf("Erro no processamento do arquivo!");
         return false;
     }
-
 
     PAGINA pagina, novaPagina;
     bool encontrado, promovido;
@@ -248,37 +231,423 @@ bool insert(FILE* fbin, int registro, int RRN, int chave, int *promover, int *pr
         *promover = -1;
         return true;
     }
-    fseek(fbin, 19+53*RRN, SEEK_SET);
-    fread(&pagina.tipoNo, sizeof(int), 1, fbin);
-    fread(&pagina.nroChaves, sizeof(int), 1, fbin);
-    for(int i = 0; i < maxchaves; i++){
-        fread(&pagina.chave[i], sizeof(int), 1, fbin);
-        fread(&pagina.registro[i], sizeof(int), 1, fbin);
-    }
-    for(int i = 0; i < ordem; i++){
-        fread(&pagina.filho[i], sizeof(int), 1, fbin);
-    }
-    
-    if(procuraNo(chave, pagina, &posicao)){
+
+    pagina = localizaNo(fbin, RRN, chave, &posicao, &encontrado);
+
+    if(encontrado){
         printf("Chave já cadastrada!");
         return false;
     }
 
-    promovido = insert(fbin, registro, pagina.filho[posicao], chave, &filho, &chave_abaixo);
+    promovido = insert(fbin, registro, pagina.filho[posicao], chave, &filho, &chave_abaixo, cabecalho);
     if(!promovido){
         return false;
     }
     if(pagina.nroChaves < maxchaves){
         pagina = ins_in_page(chave_abaixo, filho, pagina);
-        escreverNO(RRN, pagina);
-        cabecalho->proxRRN++;
+        escreverNO(fbin, RRN, pagina);
         return false;
     }
     else{
-        novaPagina = split(chave_abaixo, filho, pagina, promover_chave, novaPagina, promover, cabecalho);
-        escreverNO(RRN, pagina);
-        escreverNO(*promover , novaPagina);
-        cabecalho->proxRRN+=2;
+        novaPagina = split(chave_abaixo, filho, pagina, promover_chave, novaPagina, promover, *cabecalho);
+        escreverNO(fbin, RRN, pagina);
+        escreverNO(fbin, *promover, novaPagina);
+        cabecalho->proxRRN++;
         return true;
     }
+}
+
+
+PAGINA lerNO(FILE *fArvore, int rrn) {
+    PAGINA pagina;
+    fseek(fArvore, 17+53*rrn, SEEK_SET);
+    fread(&pagina.removido, sizeof(char), 1, fArvore);
+    fread(&pagina.proximo, sizeof(int), 1, fArvore);
+    fread(&pagina.tipoNo, sizeof(int), 1, fArvore);
+    fread(&pagina.nroChaves, sizeof(int), 1, fArvore);
+    for(int i = 0; i<maxchaves; ++i) {
+        fread(&pagina.chave[i], sizeof(int), 1, fArvore);
+        fread(&pagina.registro[i], sizeof(int), 1, fArvore);
+    }
+    for(int i = 0; i<ordem; ++i) {
+        fread(&pagina.filho[i], sizeof(int), 1, fArvore);
+    }
+    return pagina;
+}
+ 
+bool isFolha(PAGINA pagina) {
+    if(pagina.filho[0] == -1) {
+        return true;
+    }
+    return false;
+}
+ 
+void liberaPagina(FILE *fArvore, ARVOREB_CABECALHO *cabecalho, int rrn) {
+    char marca = '1';
+    int prox = cabecalho->topo;
+    fseek(fArvore, 17+53*rrn, SEEK_SET);
+    fwrite(&marca, sizeof(char), 1, fArvore);
+    fwrite(&prox, sizeof(int), 1, fArvore);
+    cabecalho->topo = rrn;
+    --cabecalho->nroNos;
+}
+ 
+void buscaSucessor(FILE *fArvore, int rrn, int *chave, int *p) {
+    PAGINA pagina = lerNO(fArvore, rrn);
+    while(!isFolha(pagina)) {
+        rrn = pagina.filho[0];
+        pagina = lerNO(fArvore, rrn);
+    }
+    *chave = pagina.chave[0];
+    *p = pagina.registro[0];
+}
+ 
+void removeChaveFolha(PAGINA *pagina, int posicao) {
+    for(int i = posicao; i<pagina->nroChaves-1; ++i) {
+        pagina->chave[i] = pagina->chave[i+1];
+        pagina->registro[i] = pagina->registro[i+1];
+    }
+    --pagina->nroChaves;
+    pagina->chave[pagina->nroChaves] = -1;
+    pagina->registro[pagina->nroChaves] = -1;
+}
+ 
+void redistribui(FILE *fArvore, int rrnPai, int separacao) {
+    PAGINA pai = lerNO(fArvore, rrnPai);
+    int rrnEsquerda = pai.filho[separacao], rrnDireita = pai.filho[separacao+1];
+    PAGINA esquerda = lerNO(fArvore, rrnEsquerda), direita = lerNO(fArvore, rrnDireita);
+ 
+    int totalChaves = 0, totalFilhos = 0, filhos[ordem*2+1], posicoes[ordem*2], chaves[ordem*2];
+    for(int i = 0; i<esquerda.nroChaves; ++i) {
+        chaves[totalChaves] = esquerda.chave[i];
+        posicoes[totalChaves++] = esquerda.registro[i];
+        filhos[totalFilhos++] = esquerda.filho[i];
+    }
+    filhos[totalFilhos++] = esquerda.filho[esquerda.nroChaves];
+    chaves[totalChaves] = pai.chave[separacao];
+    posicoes[totalChaves++] = pai.registro[separacao];
+    for(int i = 0; i<direita.nroChaves; ++i) {
+        chaves[totalChaves] = direita.chave[i];
+        posicoes[totalChaves] = direita.registro[i];
+        ++totalChaves;
+    }
+    for(int i = 0; i<=direita.nroChaves; ++i) {
+        filhos[totalFilhos] = direita.filho[i];
+        ++totalFilhos;
+    }
+ 
+    int quantEsquerda = totalChaves/2;
+    int tipo = esquerda.tipoNo, tipo2 = direita.tipoNo;
+    esquerda = inicializaPagina();
+    direita = inicializaPagina();
+    esquerda.tipoNo = tipo;
+    direita.tipoNo = tipo2;
+ 
+    for(int i = 0; i<quantEsquerda; ++i) {
+        esquerda.chave[i] = chaves[i];
+        esquerda.registro[i] = posicoes[i];
+        esquerda.filho[i] = filhos[i];
+    }
+    esquerda.filho[quantEsquerda] = filhos[quantEsquerda];
+    esquerda.nroChaves = quantEsquerda;
+ 
+    pai.chave[separacao] = chaves[quantEsquerda];
+    pai.registro[separacao] = posicoes[quantEsquerda];
+ 
+    for(int i = quantEsquerda+1, j=0; i<totalChaves; ++i) {
+        direita.chave[j] = chaves[i];
+        direita.registro[j] = posicoes[i];
+        ++j;
+    }
+    direita.nroChaves = totalChaves-quantEsquerda-1;
+    for(int i = quantEsquerda+1, j=0; i<totalFilhos; ++i) {
+        direita.filho[j] = filhos[i];
+        ++j;
+    }
+ 
+    escreverNO(fArvore,rrnEsquerda,esquerda);
+    escreverNO(fArvore,rrnDireita,direita);
+    escreverNO(fArvore,rrnPai,pai);
+}
+ 
+void concatena(FILE *fArvore, ARVOREB_CABECALHO *cabecalho, int rrnPai, int separacao) {
+    PAGINA pai = lerNO(fArvore, rrnPai);
+    int rrnEsquerda = pai.filho[separacao], rrnDireita = pai.filho[separacao+1];
+    PAGINA esquerda = lerNO(fArvore, rrnEsquerda), direita = lerNO(fArvore, rrnDireita);
+ 
+    int posicaoAtual = esquerda.nroChaves;
+    
+    esquerda.chave[posicaoAtual] = pai.chave[separacao];
+    esquerda.registro[posicaoAtual] = pai.registro[separacao];
+    esquerda.filho[posicaoAtual+1] = direita.filho[0];
+    ++esquerda.nroChaves;
+    ++posicaoAtual;
+    
+    for(int i = 0; i<direita.nroChaves; ++i) {
+        esquerda.chave[posicaoAtual] = direita.chave[i];
+        esquerda.registro[posicaoAtual] = direita.registro[i];
+        esquerda.filho[posicaoAtual+1] = direita.filho[i+1];
+        ++esquerda.nroChaves;
+        ++posicaoAtual;
+    }
+ 
+    escreverNO(fArvore, rrnEsquerda, esquerda);
+    liberaPagina(fArvore, cabecalho, rrnDireita);
+ 
+    for(int i = separacao; i<pai.nroChaves-1; ++i) {
+        pai.chave[i] = pai.chave[i+1];
+        pai.registro[i] = pai.registro[i+1];
+        pai.filho[i+1] = pai.filho[i+2];
+    }
+    --pai.nroChaves;
+    pai.chave[pai.nroChaves] = -1;
+    pai.registro[pai.nroChaves] = -1;
+    pai.filho[pai.nroChaves+1] = -1;
+    escreverNO(fArvore, rrnPai, pai);
+}
+ 
+void trataUnderflow(FILE *fArvore, ARVOREB_CABECALHO *cabecalho, int rrnPai, int posFilho) {
+    PAGINA pai = lerNO(fArvore, rrnPai);
+ 
+    if(posFilho<pai.nroChaves) {
+        PAGINA direita = lerNO(fArvore, pai.filho[posFilho+1]);
+        if(direita.nroChaves>minchaves) {
+            redistribui(fArvore, rrnPai, posFilho);
+            return;
+        }
+    }
+    if(posFilho>0) {
+        PAGINA esquerda = lerNO(fArvore, pai.filho[posFilho-1]);
+        if(esquerda.nroChaves>minchaves) {
+            redistribui(fArvore, rrnPai, posFilho-1);
+            return;
+        }
+    }
+    if(posFilho>0) {
+        concatena(fArvore, cabecalho, rrnPai, posFilho-1);
+        return;
+    }
+    
+    concatena(fArvore, cabecalho, rrnPai, posFilho);
+}
+ 
+ 
+bool removeChaveArvoreInterno(FILE *fArvore, ARVOREB_CABECALHO *cabecalho, int rrn, int chave) {
+    int posicao;
+    bool achou;
+    PAGINA pagina = localizaNo(fArvore, rrn, chave, &posicao, &achou);
+ 
+    if(isFolha(pagina)) {
+        if(!achou) {
+            return false;
+        }
+        removeChaveFolha(&pagina, posicao);
+        escreverNO(fArvore, rrn, pagina);
+        if(pagina.nroChaves<minchaves) {
+            return true;
+        }
+        return false;
+    }
+ 
+    if(achou) {
+        int chave2,posicao2;
+        buscaSucessor(fArvore, pagina.filho[posicao+1], &chave2, &posicao2);
+        pagina.chave[posicao] = chave2;
+        pagina.registro[posicao] = posicao2;
+        escreverNO(fArvore, rrn, pagina);
+        if(removeChaveArvoreInterno(fArvore, cabecalho, pagina.filho[posicao+1], chave2)) {
+            trataUnderflow(fArvore, cabecalho, rrn, posicao+1);
+        }
+    } else {
+        if(removeChaveArvoreInterno(fArvore, cabecalho, pagina.filho[posicao], chave)) {
+            trataUnderflow(fArvore, cabecalho, rrn, posicao);
+        }
+    }
+ 
+    pagina = lerNO(fArvore, rrn);
+    if(pagina.nroChaves<minchaves) {
+        return true;
+    }
+    return false;
+}
+ 
+void removeChaveArvore(FILE *fArvore, ARVOREB_CABECALHO *cabecalho, int chave) {
+    if(cabecalho->noRaiz == -1) {
+        return;
+    }
+ 
+    removeChaveArvoreInterno(fArvore, cabecalho, cabecalho->noRaiz, chave);
+ 
+    PAGINA raiz = lerNO(fArvore, cabecalho->noRaiz);
+    if(raiz.nroChaves == 0) {
+        if(!isFolha(raiz)) {
+            int antigaRaiz = cabecalho->noRaiz;
+            cabecalho->noRaiz = raiz.filho[0];
+            liberaPagina(fArvore, cabecalho, antigaRaiz);
+            PAGINA novaRaiz = lerNO(fArvore, cabecalho->noRaiz);
+            if(isFolha(novaRaiz)) {
+                novaRaiz.tipoNo = -1;
+            } else {
+                novaRaiz.tipoNo = 0;
+            }
+            escreverNO(fArvore, cabecalho->noRaiz, novaRaiz);
+        } else {
+            liberaPagina(fArvore, cabecalho, cabecalho->noRaiz);
+            cabecalho->noRaiz = -1;
+        }
+    }
+}
+ 
+bool lerCabecalhoDados(FILE *fbin, CABECALHO *cab) {
+    fseek(fbin, 0, SEEK_SET);
+    fread(&cab->status, sizeof(char), 1, fbin);
+    if(cab->status == '0') {
+        return false;
+    }
+    cab->status = '0';
+    fseek(fbin, 0, SEEK_SET);
+    fwrite(&cab->status, sizeof(char), 1, fbin);
+    fseek(fbin, 1, SEEK_SET);
+    fread(&cab->topo, sizeof(int), 1, fbin);
+    fread(&cab->proxRRN, sizeof(int), 1, fbin);
+    fread(&cab->nroEstacoes, sizeof(int), 1, fbin);
+    fread(&cab->nroParesEstacao, sizeof(int), 1, fbin);
+    return true;
+}
+ 
+void escreverCabecalhoDados(FILE *fbin, CABECALHO cab) {
+    fseek(fbin, 0, SEEK_SET);
+    fwrite(&cab.status, sizeof(char), 1, fbin);
+    fwrite(&cab.topo, sizeof(int), 1, fbin);
+    fwrite(&cab.proxRRN, sizeof(int), 1, fbin);
+    fwrite(&cab.nroEstacoes, sizeof(int), 1, fbin);
+    fwrite(&cab.nroParesEstacao, sizeof(int), 1, fbin);
+}
+ 
+bool lerCabecalhoArvore(FILE *fArvore, ARVOREB_CABECALHO *cab) {
+    fseek(fArvore, 0, SEEK_SET);
+    fread(&cab->status, sizeof(char), 1, fArvore);
+    if(cab->status == '0') {
+        return false;
+    }
+    cab->status = '0';
+    fseek(fArvore, 0, SEEK_SET);
+    fwrite(&cab->status, sizeof(char), 1, fArvore);
+    fseek(fArvore, 1, SEEK_SET);
+    fread(&cab->noRaiz, sizeof(int), 1, fArvore);
+    fread(&cab->topo, sizeof(int), 1, fArvore);
+    fread(&cab->proxRRN, sizeof(int), 1, fArvore);
+    fread(&cab->nroNos, sizeof(int), 1, fArvore);
+    return true;
+}
+ 
+void escreverCabecalhoArvore(FILE *fArvore, ARVOREB_CABECALHO cab) {
+    fseek(fArvore, 0, SEEK_SET);
+    fwrite(&cab.status, sizeof(char), 1, fArvore);
+    fwrite(&cab.noRaiz, sizeof(int), 1, fArvore);
+    fwrite(&cab.topo, sizeof(int), 1, fArvore);
+    fwrite(&cab.proxRRN, sizeof(int), 1, fArvore);
+    fwrite(&cab.nroNos, sizeof(int), 1, fArvore);
+}
+ 
+void executaRemocoes(FILE *fbin, FILE *fArvore, CABECALHO *cabDados, ARVOREB_CABECALHO *cabArvore, int n) {
+    for(int i = 0; i<n; ++i) {
+        int quantAnds;
+        scanf("%d", &quantAnds);
+        char *condicoes[quantAnds][2];
+        lerCondicoesBusca(quantAnds, condicoes);
+        bool temChave = false;
+        int chaveBusca = -1;
+        for(int j = 0; j<quantAnds; ++j) {
+            if((int)(intptr_t)condicoes[j][0] == 2) {
+                temChave = true;
+                chaveBusca = atoi(condicoes[j][1]);
+            }
+        }
+        if(temChave) {
+            int posicao = buscaChave(fArvore, chaveBusca, cabArvore->noRaiz);
+            if(posicao != -1) {
+                fseek(fbin, tamHeader + posicao*tamRegistro, SEEK_SET);
+                char removido;
+                fread(&removido, sizeof(char), 1, fbin);
+                if(removido != '1') {
+                    REGISTRO registro;
+                    registro.removido = '0';
+                    bool ok = lerRegistroVerifica(fbin, &registro,quantAnds, condicoes);
+                    if(ok) {
+                        char marca = '1';
+                        fseek(fbin, tamHeader + posicao * tamRegistro, SEEK_SET);
+                        fwrite(&marca, sizeof(char), 1, fbin);
+                        fwrite(&cabDados->topo, sizeof(int), 1, fbin);
+                        cabDados->topo = posicao;
+                        --cabDados->nroEstacoes;
+                        if(registro.codProxEstacao != -1) {
+                            --cabDados->nroParesEstacao;
+                        }
+                        removeChaveArvore(fArvore, cabArvore, registro.codEstacao);
+                    }
+                }
+            }
+        } else {
+            int posicao = 0;
+            fseek(fbin, tamHeader, SEEK_SET);
+            char removido;
+            while(fread(&removido, sizeof(char), 1, fbin) == 1) {
+                if(removido == '1') {
+                    fseek(fbin, tamRegistro - 1, SEEK_CUR);
+                    ++posicao;
+                    continue;
+                }
+                REGISTRO registro;
+                registro.removido = '0';
+                bool ok = lerRegistroVerifica(fbin, &registro, quantAnds, condicoes);
+                if(ok) {
+                    char marca = '1';
+                    fseek(fbin, tamHeader + posicao*tamRegistro, SEEK_SET);
+                    fwrite(&marca, sizeof(char), 1, fbin);
+                    fwrite(&cabDados->topo, sizeof(int), 1, fbin);
+                    cabDados->topo = posicao;
+                    --cabDados->nroEstacoes;
+                    if(registro.codProxEstacao != -1) {
+                        --cabDados->nroParesEstacao;
+                    }
+                    removeChaveArvore(fArvore, cabArvore, registro.codEstacao);
+                    fseek(fbin, tamHeader + (posicao+1) * tamRegistro, SEEK_SET);
+                }
+                ++posicao;
+            }
+        }
+        liberarCondicoes(quantAnds, condicoes);
+    }
+}
+
+void delete(char *arquivoBin, char *arquivoArvore, int n) {
+    FILE *fbin;
+    if(arquivoBin == NULL || !(fbin = fopen(arquivoBin, "r+b"))) {
+        printf("Falha no processamento do arquivo.\n");
+        return;
+    }
+    FILE *fArvore;
+    if(arquivoArvore == NULL || !(fArvore = fopen(arquivoArvore, "r+b"))) {
+        printf("Falha no processamento do arquivo.\n");
+        fclose(fbin);
+        return;
+    }
+    CABECALHO cabDados;
+    ARVOREB_CABECALHO cabArvore;
+    if(!lerCabecalhoDados(fbin, &cabDados) || !lerCabecalhoArvore(fArvore, &cabArvore)) {
+        printf("Falha no processamento do arquivo.\n");
+        fclose(fbin);
+        fclose(fArvore);
+        return;
+    }
+    executaRemocoes(fbin, fArvore, &cabDados, &cabArvore, n);
+    cabDados.status = '1';
+    escreverCabecalhoDados(fbin, cabDados);
+    cabArvore.status = '1';
+    escreverCabecalhoArvore(fArvore, cabArvore);
+    fclose(fbin);
+    fclose(fArvore);
+    BinarioNaTela(arquivoBin);
+    BinarioNaTela(arquivoArvore);
 }
