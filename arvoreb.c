@@ -25,6 +25,7 @@ void criaRaiz(FILE* fbin, int promover, int promoverChave, int promoverRegistro,
     }
     escreverNO(fbin, cabecalho->proxRRN, pagina);
     cabecalho->proxRRN++;
+    cabecalho->nroNos++;
 }
 
 
@@ -181,7 +182,7 @@ PAGINA split(FILE *fbin, int chave, int filho,int registro,  PAGINA *pagina, int
         registroTrabalho[i] = pagina->registro[i];
     }
     filhosTrabalho[i] = pagina->filho[i];
-    for(i = maxchaves; chave < chavesTrabalho[i-1] && i > 0; i--){
+    for(i = maxchaves; i > 0 && chave < chavesTrabalho[i-1]; i--){
         chavesTrabalho[i] = chavesTrabalho[i-1];
         filhosTrabalho[i+1] = filhosTrabalho[i];
         registroTrabalho[i] = registroTrabalho[i-1];
@@ -199,6 +200,7 @@ PAGINA split(FILE *fbin, int chave, int filho,int registro,  PAGINA *pagina, int
         cabecalho->topo = prox;
     }
     novaPagina = inicializaPagina();
+    novaPagina.tipoNo = (pagina->tipoNo == -1) ? -1 : 1;
     for(i = 0; i < minchaves; i++){
         pagina->chave[i] = chavesTrabalho[i];
         pagina->filho[i] = filhosTrabalho[i];
@@ -211,6 +213,7 @@ PAGINA split(FILE *fbin, int chave, int filho,int registro,  PAGINA *pagina, int
         pagina->registro[i + minchaves + 1] = -1;
     }
     pagina->chave[i] = chavesTrabalho[i];
+    pagina->filho[i] = filhosTrabalho[i];
     pagina->registro[i] = registroTrabalho[i];
     pagina->filho[minchaves + 1] = filhosTrabalho[minchaves + 1];
     novaPagina.filho[minchaves] = filhosTrabalho[i + minchaves + 2];
@@ -223,10 +226,6 @@ PAGINA split(FILE *fbin, int chave, int filho,int registro,  PAGINA *pagina, int
 
 bool insert(FILE* fbin, int registro, int RRN, int chave, int *promover, int *promover_chave, int *promoverRegistro, ARVOREB_CABECALHO *cabecalho){
     if(fbin == NULL){
-        printf("Erro no processamento do arquivo!");
-        return false;
-    }
-    if(cabecalho->status == '0'){
         printf("Erro no processamento do arquivo!");
         return false;
     }
@@ -259,6 +258,9 @@ bool insert(FILE* fbin, int registro, int RRN, int chave, int *promover, int *pr
     }
     else{
         novaPagina = split(fbin, chave_abaixo, filho, registroAbaixo, &pagina, promover_chave, novaPagina, promover, promoverRegistro, cabecalho);
+        cabecalho->nroNos++;
+        printf("split: RRN=%d tipoNo=%d | novo RRN=%d tipoNo=%d | promovida=%d\n",
+    RRN, pagina.tipoNo, *promover, novaPagina.tipoNo, *promover_chave);
         escreverNO(fbin, RRN, pagina);
         escreverNO(fbin, *promover, novaPagina);
         return true;

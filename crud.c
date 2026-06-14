@@ -198,6 +198,7 @@ void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinha
                 if(insert(fbin_arvore, proxInsercao, arvoreCabecalho.noRaiz, registro.codEstacao, &promover, &promover_chave, &promoverRegistro, &arvoreCabecalho)){
                     criaRaiz(fbin_arvore, promover, promover_chave, promoverRegistro, &arvoreCabecalho);
                 }
+                escreverCabecalhoArvore(fbin_arvore, arvoreCabecalho);
             }
             fclose(fbin_arvore);
         }
