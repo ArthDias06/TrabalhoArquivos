@@ -4,11 +4,15 @@ void criaRaiz(FILE* fbin, int promover, int promoverChave, int promoverRegistro,
     PAGINA pagina = inicializaPagina();
     int rrn = cabecalho->noRaiz;
     int filho, tipoNo;
-    pagina.tipoNo = 0;//Nó raiz
     pagina.chave[0] = promoverChave;
     pagina.registro[0] = promoverRegistro;
     pagina.filho[0] = cabecalho->noRaiz;
     pagina.filho[1] = promover;
+    if(pagina.filho[0] == -1){
+        pagina.tipoNo = -1;//Nó folha = nó raiz
+    } else {
+        pagina.tipoNo = 0;//Nó raiz
+    }
     pagina.nroChaves++;
     cabecalho->noRaiz = cabecalho->proxRRN;
     //Só é válido se já há uma raiz
@@ -67,8 +71,10 @@ void createIndex(char* arq, char* arvore_arq){
         int chave, promover, promoverChave, promoverRegistro;
         //Chave tem o valor de codEstacao do registro
         fread(&chave, sizeof(int), 1, fbin);
+        //PR deve ser o offset do registro no arquivo de dados
+        int offset = 17 + rrn*80;
         //Insere na árvore B
-        if(insert(fbin_arvore, rrn, cabecalho.noRaiz, chave, &promover, &promoverChave, &promoverRegistro, &cabecalho)){
+        if(insert(fbin_arvore, offset, cabecalho.noRaiz, chave, &promover, &promoverChave, &promoverRegistro, &cabecalho)){
             criaRaiz(fbin_arvore, promover, promoverChave, promoverRegistro, &cabecalho);
         }
         //Passa para o próximo registro
@@ -259,8 +265,6 @@ bool insert(FILE* fbin, int registro, int RRN, int chave, int *promover, int *pr
     else{
         novaPagina = split(fbin, chave_abaixo, filho, registroAbaixo, &pagina, promover_chave, novaPagina, promover, promoverRegistro, cabecalho);
         cabecalho->nroNos++;
-        printf("split: RRN=%d tipoNo=%d | novo RRN=%d tipoNo=%d | promovida=%d\n",
-    RRN, pagina.tipoNo, *promover, novaPagina.tipoNo, *promover_chave);
         escreverNO(fbin, RRN, pagina);
         escreverNO(fbin, *promover, novaPagina);
         return true;
