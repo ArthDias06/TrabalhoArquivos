@@ -7,6 +7,7 @@ int main(){
     int operacao, nroLinhas = 0, n;
     char arquivoBin[101];
     char arquivoCSV[101];
+    char arquivoArvore[101];
     char*** matrizes = criaMatriz();
     while(scanf("%d", &operacao) == 1){
         switch(operacao){
@@ -39,7 +40,7 @@ int main(){
             // Caso 5: Comando INSERT INTO
             case 5:
                 scanf("%100s %d", arquivoBin, &n);
-                insertInto(arquivoBin, n, matrizes, &nroLinhas);
+                insertInto(arquivoBin, n, matrizes, &nroLinhas, false, NULL);
                 BinarioNaTela(arquivoBin);
                 break;
             // Caso 6: Comando UPDATE com cláusula WHERE
@@ -47,6 +48,21 @@ int main(){
                 scanf("%100s %d", arquivoBin, &n);
                 update(arquivoBin, n, matrizes, &nroLinhas);
                 BinarioNaTela(arquivoBin);
+                break;
+            case 7:
+                scanf("%100s %100s", arquivoBin, arquivoArvore);
+                createIndex(arquivoBin, arquivoArvore);
+                BinarioNaTela(arquivoArvore);
+                break;
+            case 8:
+                break;
+            case 9:
+                scanf("%100s %100s %d", arquivoBin, arquivoArvore, &n);
+                insertInto(arquivoBin, n, matrizes, &nroLinhas, true, arquivoArvore);
+                BinarioNaTela(arquivoBin);
+                BinarioNaTela(arquivoArvore);
+                break;
+            case 10:
                 break;
         }
     }

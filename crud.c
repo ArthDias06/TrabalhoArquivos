@@ -132,7 +132,7 @@ bool createTable(char* csv, char* bin, char*** matrizes, int* nroLinhas){
 }
 
 
-void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinhas){
+void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinhas, bool arvore, char *arqArvore){
     FILE *fbin;
     if(arquivoBin == NULL || !(fbin = fopen(arquivoBin, "r+b"))){
         printf("Erro no Insert!");
@@ -185,6 +185,22 @@ void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinha
         registro.tamNomeLinha = strlen(nomeLinha);
         registro.removido = '0';
         registro.proximo = -1;
+
+        if(arvore){
+            int promover, promover_chave, promoverRegistro;
+            ARVOREB_CABECALHO arvoreCabecalho;
+            FILE* fbin_arvore;
+            if(arqArvore == NULL || !(fbin_arvore = fopen(arqArvore, "r+b"))){
+                printf("Erro no processamento do arquivo!");
+            }
+            else{
+                lerCabecalhoArvore(fbin_arvore, &arvoreCabecalho);
+                if(insert(fbin_arvore, proxInsercao, arvoreCabecalho.noRaiz, registro.codEstacao, &promover, &promover_chave, &promoverRegistro, &arvoreCabecalho)){
+                    criaRaiz(fbin_arvore, promover, promover_chave, promoverRegistro, &arvoreCabecalho);
+                }
+            }
+            fclose(fbin_arvore);
+        }
 
         //Se será adicionado no final aumenta o número de proxRRN
         if(cabecalho.proxRRN == proxInsercao){

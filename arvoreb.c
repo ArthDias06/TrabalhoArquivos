@@ -1,70 +1,55 @@
 #include"arvoreb.h"
 
-#define ordem 4
-#define maxchaves ordem-1
-#define minchaves ordem/2-1
-
-typedef struct cabecalho{
-    char status;
-    int noRaiz;
-    int topo;
-    int proxRRN;
-    int nroNos;
-}ARVOREB_CABECALHO;
-
-typedef struct pagina{
-    int chave[maxchaves]; //codEstacao
-    int filho[ordem];
-    int registro[maxchaves]; //Referência à posição do registro no arquivo de dados
-    char removido;
-    int proximo;
-    int tipoNo;
-    int nroChaves;
-}PAGINA;
-
-
-void criaRaiz(FILE* fbin, int promover, int promoverChave, ARVOREB_CABECALHO *cabecalho){
+void criaRaiz(FILE* fbin, int promover, int promoverChave, int promoverRegistro, ARVOREB_CABECALHO *cabecalho){
     PAGINA pagina = inicializaPagina();
     int rrn = cabecalho->noRaiz;
     int filho, tipoNo;
     pagina.tipoNo = 0;//Nó raiz
     pagina.chave[0] = promoverChave;
+    pagina.registro[0] = promoverRegistro;
     pagina.filho[0] = cabecalho->noRaiz;
     pagina.filho[1] = promover;
     pagina.nroChaves++;
     cabecalho->noRaiz = cabecalho->proxRRN;
-    fseek(fbin, 54+53*rrn, SEEK_SET);
-    fread(&filho, sizeof(int), 1, fbin);
-    fseek(fbin, -36, SEEK_CUR);
-    if(filho != -1){
-        tipoNo = 1;
+    //Só é válido se já há uma raiz
+    if(rrn != -1){
+        fseek(fbin, 54+53*rrn, SEEK_SET);
+        fread(&filho, sizeof(int), 1, fbin);
+        fseek(fbin, -36, SEEK_CUR);
+        if(filho != -1){
+            tipoNo = 1;
+        }
+        else tipoNo = -1;
+        //Atualiza o tipo no do antigo nó raiz no arquivo
+        fwrite(&tipoNo, sizeof(int), 1, fbin);
     }
-    else tipoNo = -1;
-    //Atualiza o tipo no do antigo nó raiz no arquivo
-    fwrite(&tipoNo, sizeof(int), 1, fbin);
-    escreverNO(cabecalho->proxRRN, pagina);
+    escreverNO(fbin, cabecalho->proxRRN, pagina);
     cabecalho->proxRRN++;
 }
 
 
 void createIndex(char* arq, char* arvore_arq){
     FILE *fbin;
-    if (bin == NULL || !(fbin = fopen(bin, "rb"))) {
+    if (arq == NULL || !(fbin = fopen(arq, "rb"))) {
         printf("Falha no processamento do arquivo.\n");
         return;
     }
     FILE *fbin_arvore;
-    if (csv == NULL || !(fbin_arvore = fopen(arvore_arq, "wb"))) {
+    //É aberto como write+ por conta de que o ponteiro do arquivo pode ser usado para leitura no insert
+    if (arvore_arq == NULL || !(fbin_arvore = fopen(arvore_arq, "w+b"))) {
         printf("Falha no processamento do arquivo.\n");
         fclose(fbin);
         return;
     }
-    ARVOREB_CABECALHO cabecalho = {'1', -1, -1, 0, 0};
+    ARVOREB_CABECALHO cabecalho = {'0', -1, -1, 0, 0};
+    escreverCabecalhoArvore(fbin_arvore, cabecalho);
     fseek(fbin, 0, SEEK_SET);
     char status, removido;
     fread(&status, sizeof(char), 1, fbin);
     if(status == '0'){
-        printf("Erro no processamento do arquivo!");
+        printf("Falha no processamento do arquivo!");
+        fclose(fbin);
+        fclose(fbin_arvore);
         return;
     }
     int rrn=-1;
@@ -78,19 +63,20 @@ void createIndex(char* arq, char* arvore_arq){
         }
         //Ignora o campo próximo
         fseek(fbin, 4, SEEK_CUR);
-        int chave, promover, promoverChave;
+        int chave, promover, promoverChave, promoverRegistro;
         //Chave tem o valor de codEstacao do registro
         fread(&chave, sizeof(int), 1, fbin);
         //Insere na árvore B
-        if(insert(fbin_arvore, rrn, cabecalho.noRaiz, chave, &promover, &promoverChave)){
-            criaRaiz(fbin_arvore, promover, promoverChave, &cabecalho);
+        if(insert(fbin_arvore, rrn, cabecalho.noRaiz, chave, &promover, &promoverChave, &promoverRegistro, &cabecalho)){
+            criaRaiz(fbin_arvore, promover, promoverChave, promoverRegistro, &cabecalho);
         }
         //Passa para o próximo registro
         fseek(fbin, 71, SEEK_CUR);
     }
+    cabecalho.status = '1';
+    escreverCabecalhoArvore(fbin_arvore, cabecalho);
     fclose(fbin_arvore);
     fclose(fbin);
-    BinarioNaTela(arvore_arq);
 }
 
 
@@ -100,7 +86,7 @@ int busca(FILE *fbin, int chave, int RRN){
         return -1;
     }
     if(fbin == NULL){
-        printf("Erro no processamento do arquivo!");
+        printf("Falha no processamento do arquivo!");
         return -1;
     }
     int pr = buscaChave(fbin, chave, RRN);
@@ -139,14 +125,17 @@ int buscaChave(FILE *fbin, int chave, int RRN) {
 }
 
 
-PAGINA ins_in_page(int chave, int filho, PAGINA pagina){
-    for(int i = pagina.nroChaves-1; chave < pagina.chave[i-1] && i>0; i--){
-        pagina.chave[i] = pagina.chave[i-1];
-        pagina.filho[i+1] = pagina.filho[i];
-        pagina.nroChaves++;
-        pagina.chave[i] = chave;
-        pagina.filho[i+1] = filho;
+PAGINA ins_in_page(int chave, int registro, int filho, PAGINA pagina){
+    int i;
+    for(i = pagina.nroChaves-1; i>=0 && chave < pagina.chave[i]; i--){
+        pagina.chave[i+1] = pagina.chave[i];
+        pagina.registro[i+1] = pagina.registro[i];
+        pagina.filho[i+2] = pagina.filho[i+1];
     }
+    pagina.nroChaves++;
+    pagina.chave[i+1] = chave;
+    pagina.registro[i+1] = registro;
+    pagina.filho[i+2] = filho;
     return pagina;
 }
 
@@ -163,9 +152,11 @@ void escreverNO(FILE *fArvore, int rrn, PAGINA pagina) {
     for(int i = 0; i < ordem; i++){
         fwrite(&pagina.filho[i], sizeof(int), 1, fArvore);
     }
+    fflush(fArvore);
 }
 
-PAGINA inicializaPagina(PAGINA pagina){
+PAGINA inicializaPagina(){
+    PAGINA pagina;
     for(int j = 0; j<maxchaves; j++){
         pagina.chave[j] = -1;
         pagina.registro[j] = -1;
@@ -174,46 +165,63 @@ PAGINA inicializaPagina(PAGINA pagina){
     pagina.filho[maxchaves] = -1;
     pagina.proximo = -1;
     pagina.tipoNo = -1;
+    pagina.nroChaves = 0;
     pagina.removido = '0';
     return pagina;
 }
 
-PAGINA split(int chave, int filho, PAGINA pagina, int *promover_chave, PAGINA novaPagina, int *promover, ARVOREB_CABECALHO cabecalho){
+PAGINA split(FILE *fbin, int chave, int filho,int registro,  PAGINA *pagina, int *promover_chave, PAGINA novaPagina, int *promover, int *promoverRegistro, ARVOREB_CABECALHO *cabecalho){
     int chavesTrabalho[ordem];
     int filhosTrabalho[ordem+1];
-    
-    for(int i = 0; i < maxchaves; i++){
-        chavesTrabalho[i] = pagina.chave[i];
-        filhosTrabalho[i] = pagina.filho[i];
+    int registroTrabalho[ordem];
+    int i;
+    for(i = 0; i < maxchaves; i++){
+        chavesTrabalho[i] = pagina->chave[i];
+        filhosTrabalho[i] = pagina->filho[i];
+        registroTrabalho[i] = pagina->registro[i];
     }
-    filhosTrabalho[i] = pagina.filho[i];
-    for(int i = maxchaves; chave < chavesTrabalho[i-1] && i > 0; i--){
+    filhosTrabalho[i] = pagina->filho[i];
+    for(i = maxchaves; chave < chavesTrabalho[i-1] && i > 0; i--){
         chavesTrabalho[i] = chavesTrabalho[i-1];
         filhosTrabalho[i+1] = filhosTrabalho[i];
+        registroTrabalho[i] = registroTrabalho[i-1];
     }
     chavesTrabalho[i] = chave;
     filhosTrabalho[i+1] = filho;
-    *promover = cabecalho.proxRRN;
-    novaPagina = inicializaPagina(novaPagina);
-    for(int i = 0; i < maxchaves-minchaves; i++){
-        pagina.chave[i] = chavesTrabalho[i];
-        pagina.filho[i] = filhosTrabalho[i];
-        if(i < minchaves){
-            novaPagina.chave[i] = chavesTrabalho[i + 1 + majorCount];
-            novaPagina.filho[i] = filhosTrabalho[i + 1 + majorCount];
-        }
-        pagina.chave[i+minchaves] = -1;
-        pagina.filho[i+1+minchaves] = -1;
+    registroTrabalho[i] = registro;
+    if(cabecalho->topo == -1){
+        *promover = cabecalho->proxRRN++;
+    }else{
+        int prox;
+        *promover = cabecalho->topo;
+        fseek(fbin, 18+cabecalho->topo*53, SEEK_SET);
+        fread(&prox, sizeof(int), 1, fbin);
+        cabecalho->topo = prox;
     }
-    pagina.filho[minchaves] = filhosTrabalho[minchaves];
-    novaPagina.filho[minchaves] = filhosTrabalho[maxchaves+1];
+    novaPagina = inicializaPagina();
+    for(i = 0; i < minchaves; i++){
+        pagina->chave[i] = chavesTrabalho[i];
+        pagina->filho[i] = filhosTrabalho[i];
+        pagina->registro[i] = registroTrabalho[i];
+        novaPagina.chave[i] = chavesTrabalho[i + 2 + minchaves];
+        novaPagina.filho[i] = filhosTrabalho[i + 2 + minchaves];
+        novaPagina.registro[i] = registroTrabalho[i + 2 + minchaves];
+        pagina->chave[i + minchaves + 1]  = -1;
+        pagina->filho[i + minchaves + 2]  = -1;
+        pagina->registro[i + minchaves + 1] = -1;
+    }
+    pagina->chave[i] = chavesTrabalho[i];
+    pagina->registro[i] = registroTrabalho[i];
+    pagina->filho[minchaves + 1] = filhosTrabalho[minchaves + 1];
+    novaPagina.filho[minchaves] = filhosTrabalho[i + minchaves + 2];
+    pagina->nroChaves = maxchaves - minchaves;
     novaPagina.nroChaves = minchaves;
-    pagina.nroChaves = maxchaves-minchaves;
-    *promover_chave = chavesTrabalho[maxchaves-minchaves];
+    *promover_chave = chavesTrabalho[minchaves + 1];
+    *promoverRegistro = registroTrabalho[minchaves + 1];
     return novaPagina;
 }
 
-bool insert(FILE* fbin, int registro, int RRN, int chave, int *promover, int *promover_chave, ARVOREB_CABECALHO *cabecalho){
+bool insert(FILE* fbin, int registro, int RRN, int chave, int *promover, int *promover_chave, int *promoverRegistro, ARVOREB_CABECALHO *cabecalho){
     if(fbin == NULL){
         printf("Erro no processamento do arquivo!");
         return false;
@@ -225,9 +233,10 @@ bool insert(FILE* fbin, int registro, int RRN, int chave, int *promover, int *pr
 
     PAGINA pagina, novaPagina;
     bool encontrado, promovido;
-    int posicao, filho, chave_abaixo;
+    int posicao, filho, chave_abaixo, registroAbaixo;
     if(RRN == -1){
         *promover_chave = chave;
+        *promoverRegistro = registro;
         *promover = -1;
         return true;
     }
@@ -239,20 +248,19 @@ bool insert(FILE* fbin, int registro, int RRN, int chave, int *promover, int *pr
         return false;
     }
 
-    promovido = insert(fbin, registro, pagina.filho[posicao], chave, &filho, &chave_abaixo, cabecalho);
+    promovido = insert(fbin, registro, pagina.filho[posicao], chave, &filho, &chave_abaixo, &registroAbaixo, cabecalho);
     if(!promovido){
         return false;
     }
     if(pagina.nroChaves < maxchaves){
-        pagina = ins_in_page(chave_abaixo, filho, pagina);
+        pagina = ins_in_page(chave_abaixo, registroAbaixo, filho, pagina);
         escreverNO(fbin, RRN, pagina);
         return false;
     }
     else{
-        novaPagina = split(chave_abaixo, filho, pagina, promover_chave, novaPagina, promover, *cabecalho);
+        novaPagina = split(fbin, chave_abaixo, filho, registroAbaixo, &pagina, promover_chave, novaPagina, promover, promoverRegistro, cabecalho);
         escreverNO(fbin, RRN, pagina);
         escreverNO(fbin, *promover, novaPagina);
-        cabecalho->proxRRN++;
         return true;
     }
 }
