@@ -69,12 +69,11 @@ void createIndex(char* arq, char* arvore_arq){
         //Ignora o campo próximo
         fseek(fbin, 4, SEEK_CUR);
         int chave, promover, promoverChave, promoverRegistro;
+        bool flag = false;
         //Chave tem o valor de codEstacao do registro
         fread(&chave, sizeof(int), 1, fbin);
-        //PR deve ser o offset do registro no arquivo de dados
-        int offset = 17 + rrn*80;
         //Insere na árvore B
-        if(insert(fbin_arvore, offset, cabecalho.noRaiz, chave, &promover, &promoverChave, &promoverRegistro, &cabecalho)){
+        if(insert(fbin_arvore, 17 + rrn*80, cabecalho.noRaiz, chave, &promover, &promoverChave, &promoverRegistro, &cabecalho, &flag)){
             criaRaiz(fbin_arvore, promover, promoverChave, promoverRegistro, &cabecalho);
         }
         //Passa para o próximo registro
@@ -230,7 +229,7 @@ PAGINA split(FILE *fbin, int chave, int filho,int registro,  PAGINA *pagina, int
     return novaPagina;
 }
 
-bool insert(FILE* fbin, int registro, int RRN, int chave, int *promover, int *promover_chave, int *promoverRegistro, ARVOREB_CABECALHO *cabecalho){
+bool insert(FILE* fbin, int registro, int RRN, int chave, int *promover, int *promover_chave, int *promoverRegistro, ARVOREB_CABECALHO *cabecalho, bool *flag){
     if(fbin == NULL){
         printf("Erro no processamento do arquivo!");
         return false;
@@ -249,11 +248,11 @@ bool insert(FILE* fbin, int registro, int RRN, int chave, int *promover, int *pr
     pagina = localizaNo(fbin, RRN, chave, &posicao, &encontrado);
 
     if(encontrado){
-        printf("Chave já cadastrada!");
+        *flag = true;
         return false;
     }
 
-    promovido = insert(fbin, registro, pagina.filho[posicao], chave, &filho, &chave_abaixo, &registroAbaixo, cabecalho);
+    promovido = insert(fbin, registro, pagina.filho[posicao], chave, &filho, &chave_abaixo, &registroAbaixo, cabecalho, flag);
     if(!promovido){
         return false;
     }

@@ -42,7 +42,7 @@ PAGINA ins_in_page(int chave, int registro, int filho, PAGINA pagina);
 void escreverNO(FILE *fArvore, int rrn, PAGINA pagina);
 PAGINA inicializaPagina();
 PAGINA split(FILE* fbin, int chave, int filho, int registro, PAGINA *pagina, int *promover_chave, PAGINA novaPagina, int *promover, int *promoverRegistro, ARVOREB_CABECALHO *cabecalho);
-bool insert(FILE* fbin, int registro, int RRN, int chave, int *promover, int *promover_chave, int *promoverRegistro, ARVOREB_CABECALHO *cabecalho);
+bool insert(FILE* fbin, int registro, int RRN, int chave, int *promover, int *promover_chave, int *promoverRegistro, ARVOREB_CABECALHO *cabecalho, bool *flag);
 PAGINA lerNO(FILE *fArvore, int rrn);
 bool isFolha(PAGINA pagina);
 void liberaPagina(FILE *fArvore, ARVOREB_CABECALHO *cabecalho, int rrn);

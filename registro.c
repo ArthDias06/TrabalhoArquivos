@@ -31,6 +31,7 @@ bool lerCabecalho(FILE* fbin, CABECALHO *cabecalho){
         return false;
     }
     cabecalho->status = '0';
+    fseek(fbin, -1, SEEK_CUR);
     fwrite(&cabecalho->status, sizeof(char), 1, fbin);
     fread(&cabecalho->topo, sizeof(int), 1, fbin);
     fread(&cabecalho->proxRRN, sizeof(int), 1, fbin);

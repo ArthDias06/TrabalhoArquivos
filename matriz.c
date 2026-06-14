@@ -44,14 +44,14 @@ void deletaMatriz(char**** matrizes, int nroLinhas){
 }
 
 //Caso a matriz atinja um múltiplo de 200 ela deve ser realocad e mais 200 espaçoes são liberados para ela usar
-void realocacao(char**** matrizes, int* nroLinhas){
-    (*matrizes)[0] = realloc((*matrizes)[0], sizeof(char*) * ((*nroLinhas)+200));
-    (*matrizes)[1] = realloc((*matrizes)[1], sizeof(char*) * ((*nroLinhas)+200));
-    (*matrizes)[2] = realloc((*matrizes)[2], sizeof(char*) * ((*nroLinhas)+200));
+void realocacao(char*** matrizes, int* nroLinhas){
+    matrizes[0] = realloc(matrizes[0], sizeof(char*) * ((*nroLinhas)+200));
+    matrizes[1] = realloc(matrizes[1], sizeof(char*) * ((*nroLinhas)+200));
+    matrizes[2] = realloc(matrizes[2], sizeof(char*) * ((*nroLinhas)+200));
     for(int j = *nroLinhas; j < (*nroLinhas)+200; j++){
-        (*matrizes)[0][j] = malloc(sizeof(char) * 44);
-        (*matrizes)[1][j] = malloc(sizeof(char) * 11);
-        (*matrizes)[2][j] = malloc(sizeof(char) * 11);
+        matrizes[0][j] = malloc(sizeof(char) * 44);
+        matrizes[1][j] = malloc(sizeof(char) * 11);
+        matrizes[2][j] = malloc(sizeof(char) * 11);
     }
 }
 
@@ -64,7 +64,7 @@ void populaMatriz(char*** matrizes, int* nroLinhas, FILE* fbin, int proxRRN){
     for(int i = 0; i<proxRRN; ++i) {
         //Se tiveer alcançado o limite da matriz aumenta o espaço permitido
         if((*nroLinhas)% 200 == 0 && (*nroLinhas) > 0){
-            realocacao(&matrizes, nroLinhas);
+            realocacao(matrizes, nroLinhas);
         }
         int temp;
         char rem;

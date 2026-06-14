@@ -4,7 +4,7 @@
     
     char*** criaMatriz();
     void deletaMatriz(char****, int);
-    void realocacao(char****, int*);
+    void realocacao(char***, int*);
     void populaMatriz(char***, int*, FILE*, int);
     bool duplicidadeEstacoes(char***, int*, char*);
     bool duplicidadeParesEstacao(char***, int*, char*, char*);

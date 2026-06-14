@@ -116,7 +116,7 @@ bool createTable(char* csv, char* bin, char*** matrizes, int* nroLinhas){
         }
         //Vê se o i está na última linha da matriz da matriz, se estiver, aloca mais memória
         if((*nroLinhas)% 200 == 0 && (*nroLinhas) > 0){
-            realocacao(&matrizes, nroLinhas);
+            realocacao(matrizes, nroLinhas);
         }
         //Aumenta o número de linhas usadas pela matriz
         (*nroLinhas)++;
@@ -135,7 +135,7 @@ bool createTable(char* csv, char* bin, char*** matrizes, int* nroLinhas){
 void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinhas, bool arvore, char *arqArvore){
     FILE *fbin;
     if(arquivoBin == NULL || !(fbin = fopen(arquivoBin, "r+b"))){
-        printf("Erro no Insert!");
+        printf("Falha no processamento do arquivo!\n");
         return;
     }
     //Strings dos campos usados, os nomeEstacoa e nomeLinha tem 2 byes a mais por conat das aspas do input
@@ -144,11 +144,10 @@ void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinha
     //Leitura do cabecalho do arquivo
     CABECALHO cabecalho;
     if(!lerCabecalho(fbin, &cabecalho)){
-        printf("Erro no processamento do arquivo!");
+        printf("Falha no processamento do arquivo!\n");
         return;
     }
     int proxInsercao;
-
     //Caso a matriz não tenha sido ainda preenchida com os valores do arquivo
     if(*nroLinhas <= 0){
         populaMatriz(matrizes, nroLinhas, fbin, cabecalho.proxRRN);
@@ -185,22 +184,28 @@ void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinha
         registro.tamNomeLinha = strlen(nomeLinha);
         registro.removido = '0';
         registro.proximo = -1;
-
+        
         if(arvore){
             int promover, promover_chave, promoverRegistro;
+            bool flag = false;
             ARVOREB_CABECALHO arvoreCabecalho;
             FILE* fbin_arvore;
             if(arqArvore == NULL || !(fbin_arvore = fopen(arqArvore, "r+b"))){
-                printf("Erro no processamento do arquivo!");
+                printf("Falha no processamento do arquivo!\n");
             }
             else{
                 lerCabecalhoArvore(fbin_arvore, &arvoreCabecalho);
-                if(insert(fbin_arvore, proxInsercao, arvoreCabecalho.noRaiz, registro.codEstacao, &promover, &promover_chave, &promoverRegistro, &arvoreCabecalho)){
+                if(insert(fbin_arvore, 17+proxInsercao*80, arvoreCabecalho.noRaiz, registro.codEstacao, &promover, &promover_chave, &promoverRegistro, &arvoreCabecalho, &flag)){
                     criaRaiz(fbin_arvore, promover, promover_chave, promoverRegistro, &arvoreCabecalho);
                 }
+                arvoreCabecalho.status = '1';
                 escreverCabecalhoArvore(fbin_arvore, arvoreCabecalho);
             }
             fclose(fbin_arvore);
+            //Pula para não inserir no arquivo de dados
+            if( flag){
+                continue;
+            }
         }
 
         //Se será adicionado no final aumenta o número de proxRRN
@@ -220,7 +225,7 @@ void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinha
 
         //Caso a matriz tenha chegado no limite é alocad mais memória
         if((*nroLinhas)% 200 == 0 && (*nroLinhas) > 0){
-            realocacao(&matrizes, nroLinhas);
+            realocacao(matrizes, nroLinhas);
         }
 
         //Verificação se o par e o nome da estação já existem
@@ -251,14 +256,14 @@ void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinha
 void update(char *arquivoBin, int nroUpdate, char ***matrizes, int* nroLinhas){
     FILE *fbin;
     if(arquivoBin == NULL || !(fbin = fopen(arquivoBin, "r+b"))){
-        printf("Erro no Update!");
+        printf("Falha no processamento do arquivo!\n");
         return;
     }
 
     //Leitura do cabecalho do arquivo
     CABECALHO cabecalho;
     if(!lerCabecalho(fbin, &cabecalho)){
-        printf("Erro no processamento do arquivo!");
+        printf("Falha no processamento do arquivo!\n");
         return;
     }
 
@@ -464,14 +469,14 @@ void selectFromWhere(char *arquivoBin, int quantBuscas, bool temWhere) {
     // Processamento padrão de arquivo
     FILE *fbin;
     if(arquivoBin == NULL || !(fbin = fopen(arquivoBin, "rb"))){
-        printf("Erro no processamento do arquivo.\n");
+        printf("Falha no processamento do arquivo.\n");
         return;
     }
     char status;
     fseek(fbin, 0, SEEK_SET);
     fread(&status, sizeof(char), 1, fbin);
     if(status =='0'){
-        printf("Erro no processamento do arquivo!");
+        printf("Falha no processamento do arquivo!\n");
         return;
     }
     // Fazemos os "OR's" do SELECT (isso é, cada uma das buscas)
@@ -557,7 +562,7 @@ void selectFromWhere(char *arquivoBin, int quantBuscas, bool temWhere) {
     fclose(fbin);
 }
 
-// Função que representa o DELETE FROM WHERE. Retorna se houve erro (1) ou não (0)
+// Função que representa o DELETE FROM WHERE. Retorna se houve Falha (1) ou não (0)
 bool deleteFromWhere(char *arquivoBin, int quantRemocoes, char ***matrizes, int *nroLinhas) {
     // Processamento padrão de arquivos
     FILE *fbin;
@@ -568,7 +573,7 @@ bool deleteFromWhere(char *arquivoBin, int quantRemocoes, char ***matrizes, int 
 
     CABECALHO cabecalho;
     if(!lerCabecalho(fbin, &cabecalho)){
-        printf("Erro no processamento doarquivo!");
+        printf("Falha no processamento doarquivo!\n");
         return false;
     }
 
