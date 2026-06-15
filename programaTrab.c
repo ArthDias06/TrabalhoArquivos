@@ -9,6 +9,7 @@ int main(){
     char arquivoCSV[101];
     char arquivoArvore[101];
     char*** matrizes = criaMatriz();
+    bool erro;
     while(scanf("%d", &operacao) == 1){
         switch(operacao){
             // Caso 1: Comando CREATE TABLE
@@ -32,7 +33,7 @@ int main(){
             case 4:
                 int n1;
                 scanf("%100s %d",arquivoBin,&n1);
-                bool erro = deleteFromWhere(arquivoBin,n1,matrizes,&nroLinhas);
+                erro = deleteFromWhere(arquivoBin,n1,matrizes,&nroLinhas);
                 if(!erro) {
                     BinarioNaTela(arquivoBin);
                 }
@@ -40,8 +41,10 @@ int main(){
             // Caso 5: Comando INSERT INTO
             case 5:
                 scanf("%100s %d", arquivoBin, &n);
-                insertInto(arquivoBin, n, matrizes, &nroLinhas, false, NULL);
-                BinarioNaTela(arquivoBin);
+                erro = insertInto(arquivoBin, n, matrizes, &nroLinhas, false, NULL);
+                if(!erro) {
+                    BinarioNaTela(arquivoBin);
+                }
                 break;
             // Caso 6: Comando UPDATE com cláusula WHERE
             case 6:
@@ -55,14 +58,22 @@ int main(){
                 BinarioNaTela(arquivoArvore);
                 break;
             case 8:
+                scanf("%100s %100s %d", arquivoBin, arquivoArvore, &n);
+                selectFromWhereArvore(arquivoBin, arquivoArvore, n);
                 break;
             case 9:
                 scanf("%100s %100s %d", arquivoBin, arquivoArvore, &n);
-                insertInto(arquivoBin, n, matrizes, &nroLinhas, true, arquivoArvore);
-                BinarioNaTela(arquivoBin);
-                BinarioNaTela(arquivoArvore);
+                erro = insertInto(arquivoBin, n, matrizes, &nroLinhas, true, arquivoArvore);
+                if(!erro) {
+                    BinarioNaTela(arquivoBin);
+                    BinarioNaTela(arquivoArvore);
+                }
                 break;
             case 10:
+                scanf("%100s %100s %d", arquivoBin, arquivoArvore, &n);
+                deleteFromWhereArvore(arquivoBin, arquivoArvore, n, matrizes, &nroLinhas);
+                BinarioNaTela(arquivoBin);
+                BinarioNaTela(arquivoArvore);
                 break;
         }
     }

@@ -9,6 +9,7 @@
 #include<stdlib.h>
 #include<stdbool.h>
 #include<stdint.h>
+#include<string.h>
 #include"registro.h"    
 #include "fornecidas.h"
 
@@ -30,31 +31,32 @@ typedef struct pagina{
     int nroChaves;
 }PAGINA;
 
-bool lerCabecalhoArvore(FILE *fArvore, ARVOREB_CABECALHO *cabecalho);
-void escreverCabecalhoArvore(FILE *fArvore, ARVOREB_CABECALHO cabecalho);
-void removeChaveArvore(FILE *fArvore, ARVOREB_CABECALHO *cabecalho, int chave);
-void criaRaiz(FILE* fbin, int promover, int promoverChave, int promoverRegistro, ARVOREB_CABECALHO *cabecalho);
-void createIndex(char* arq, char* arvore_arq);
-int busca(FILE *fbin, int chave, int RRN);
-PAGINA localizaNo(FILE *fbin, int RRN, int chave, int *posicao, bool *achou);
-int buscaChave(FILE *fbin, int chave, int RRN);
-PAGINA ins_in_page(int chave, int registro, int filho, PAGINA pagina);
-void escreverNO(FILE *fArvore, int rrn, PAGINA pagina);
+bool lerCabecalhoArvore(FILE *, ARVOREB_CABECALHO *);
+void escreverCabecalhoArvore(FILE *, ARVOREB_CABECALHO);
+void removeChaveArvore(FILE *, ARVOREB_CABECALHO *, int);
+void criaRaiz(FILE *, int, int, int, ARVOREB_CABECALHO *);
+void createIndex(char *, char *);
+int busca(FILE *, int, int);
+PAGINA localizaNo(FILE *, int, int, int *, bool *);
+int buscaChave(FILE *, int, int);
+PAGINA ins_in_page(int, int, int, PAGINA);
+void escreverNO(FILE *, int, PAGINA);
 PAGINA inicializaPagina();
-PAGINA split(FILE* fbin, int chave, int filho, int registro, PAGINA *pagina, int *promover_chave, PAGINA novaPagina, int *promover, int *promoverRegistro, ARVOREB_CABECALHO *cabecalho);
-bool insert(FILE* fbin, int registro, int RRN, int chave, int *promover, int *promover_chave, int *promoverRegistro, ARVOREB_CABECALHO *cabecalho, bool *flag);
-PAGINA lerNO(FILE *fArvore, int rrn);
-bool isFolha(PAGINA pagina);
-void liberaPagina(FILE *fArvore, ARVOREB_CABECALHO *cabecalho, int rrn);
-void buscaSucessor(FILE *fArvore, int rrn, int *chave, int *p);
-void removeChaveFolha(PAGINA *pagina, int posicao);
-void redistribui(FILE *fArvore, int rrnPai, int separacao);
-void concatena(FILE *fArvore, ARVOREB_CABECALHO *cabecalho, int rrnPai, int separacao);
-void trataUnderflow(FILE *fArvore, ARVOREB_CABECALHO *cabecalho, int rrnPai, int posFilho);
-bool removeChaveArvoreInterno(FILE *fArvore, ARVOREB_CABECALHO *cabecalho, int rrn, int chave);
-bool lerCabecalhoDados(FILE *fbin, CABECALHO *cab);
-void escreverCabecalhoDados(FILE *fbin, CABECALHO cab);
-void executaRemocoes(FILE *fbin, FILE *fArvore, CABECALHO *cabDados, ARVOREB_CABECALHO *cabArvore, int n);
-void delete(char *arquivoBin, char *arquivoArvore, int n);
-
+PAGINA split(FILE *, int, int, int, PAGINA *, int *, PAGINA, int *, int *, ARVOREB_CABECALHO *);
+bool insert(FILE *, int, int, int, int *, int *, int *, ARVOREB_CABECALHO *, bool *);
+PAGINA lerNO(FILE *, int);
+bool isFolha(PAGINA);
+void liberaPagina(FILE *, ARVOREB_CABECALHO *, int);
+void buscaSucessor(FILE *, int, int *, int *);
+void removeChaveFolha(PAGINA *, int);
+void redistribui(FILE *, int, int);
+void concatena(FILE *, ARVOREB_CABECALHO *, int, int);
+void trataUnderflow(FILE *, ARVOREB_CABECALHO *, int, int);
+bool removeChaveArvoreInterno(FILE *, ARVOREB_CABECALHO *, int, int);
+bool lerCabecalhoDados(FILE *, CABECALHO *);
+void escreverCabecalhoDados(FILE *, CABECALHO);
+void executaRemocoes(FILE *, FILE *, CABECALHO *, ARVOREB_CABECALHO *, int, char ***, int *);
+void deleteFromWhereArvore(char *, char *, int, char ***, int *);
+void selectFromWhereArvore(char *, char *, int);
+void removerSequencial(FILE *, FILE *, CABECALHO *, ARVOREB_CABECALHO *, int, char *[][2], char ***, int *);
 #endif

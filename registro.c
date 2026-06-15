@@ -205,3 +205,64 @@ bool lerRegistroVerifica(FILE *fbin, REGISTRO *registro, int quantAnds, char *co
     }
     return ok;
 }
+
+void imprimeRegistro(REGISTRO registro) {
+    printf("%d ", registro.codEstacao);
+    printf("%s ", registro.nomeEstacao);
+    if(registro.codLinha == -1) {
+        printf("NULO ");
+    } else {
+        printf("%d ", registro.codLinha);
+    }
+    if(registro.tamNomeLinha == 0) {
+        printf("NULO ");
+    } else {
+        printf("%s ", registro.nomeLinha);
+    }
+    if(registro.codProxEstacao == -1) {
+        printf("NULO ");
+    } else {
+        printf("%d ", registro.codProxEstacao);
+    }
+    if(registro.distProxEstacao == -1) {
+        printf("NULO ");
+    } else {
+        printf("%d ", registro.distProxEstacao);
+    }
+    if(registro.codLinhaIntegra == -1) {
+        printf("NULO ");
+    } else {
+        printf("%d ", registro.codLinhaIntegra);
+    }
+    if(registro.codEstIntegra == -1) {
+        printf("NULO\n");
+    } else {
+        printf("%d\n", registro.codEstIntegra);
+    }
+}
+
+bool buscaSequencial(FILE *fbin, char *condicoes[][2], int quantAnds, bool pararNoPrimeiro) {
+    bool encontrou = false;
+    int cont = 0;
+    fseek(fbin, tamHeader, SEEK_SET);
+    char removido;
+    while(fread(&removido, 1, 1, fbin) == 1) {
+        if(removido == '1') {
+            ++cont;
+            fseek(fbin, tamRegistro - 1, SEEK_CUR);
+            continue;
+        }
+        REGISTRO registro;
+        registro.removido = '0';
+        bool ok = lerRegistroVerifica(fbin, &registro, quantAnds, condicoes);
+        if(ok) {
+            encontrou = true;
+            imprimeRegistro(registro);
+            if(pararNoPrimeiro) {
+                break;
+            }
+        }
+        finalizarBusca(fbin, &cont);
+    }
+    return encontrou;
+}

@@ -14,7 +14,7 @@
 #define CRUD_H
 
     bool createTable(char *, char *, char ***, int *);
-    void insertInto(char *, int,  char ***, int *, bool, char*);
+    bool insertInto(char *, int,  char ***, int *, bool, char*);
     void update(char *, int, char ***, int *);
     void selectFromWhere(char *, int, bool);
     bool deleteFromWhere(char *,int, char ***, int *);

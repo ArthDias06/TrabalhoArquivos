@@ -132,11 +132,11 @@ bool createTable(char* csv, char* bin, char*** matrizes, int* nroLinhas){
 }
 
 
-void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinhas, bool arvore, char *arqArvore){
+bool insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinhas, bool arvore, char *arqArvore){
     FILE *fbin;
     if(arquivoBin == NULL || !(fbin = fopen(arquivoBin, "r+b"))){
-        printf("Falha no processamento do arquivo!\n");
-        return;
+        printf("Falha no processamento do arquivo.\n");
+        return 1;
     }
     //Strings dos campos usados, os nomeEstacoa e nomeLinha tem 2 byes a mais por conat das aspas do input
     char codEstacao[11], nomeEstacao[46], codLinha[11], nomeLinha[46], codProxEstacao[11], distProxEstacao[11], codLinhaIntegra[11], codEstIntegra[11];
@@ -144,8 +144,8 @@ void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinha
     //Leitura do cabecalho do arquivo
     CABECALHO cabecalho;
     if(!lerCabecalho(fbin, &cabecalho)){
-        printf("Falha no processamento do arquivo!\n");
-        return;
+        printf("Falha no processamento do arquivo.\n");
+        return 1;
     }
     int proxInsercao;
     //Caso a matriz não tenha sido ainda preenchida com os valores do arquivo
@@ -191,19 +191,17 @@ void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinha
             ARVOREB_CABECALHO arvoreCabecalho;
             FILE* fbin_arvore;
             if(arqArvore == NULL || !(fbin_arvore = fopen(arqArvore, "r+b"))){
-                printf("Falha no processamento do arquivo!\n");
+                printf("Falha no processamento do arquivo.\n");
+                return 1;
             }
-            else{
-                lerCabecalhoArvore(fbin_arvore, &arvoreCabecalho);
-                if(insert(fbin_arvore, 17+proxInsercao*80, arvoreCabecalho.noRaiz, registro.codEstacao, &promover, &promover_chave, &promoverRegistro, &arvoreCabecalho, &flag)){
-                    criaRaiz(fbin_arvore, promover, promover_chave, promoverRegistro, &arvoreCabecalho);
-                }
-                arvoreCabecalho.status = '1';
-                escreverCabecalhoArvore(fbin_arvore, arvoreCabecalho);
+            lerCabecalhoArvore(fbin_arvore, &arvoreCabecalho);
+            if(insert(fbin_arvore, 17+proxInsercao*80, arvoreCabecalho.noRaiz, registro.codEstacao, &promover, &promover_chave, &promoverRegistro, &arvoreCabecalho, &flag)){
+                criaRaiz(fbin_arvore, promover, promover_chave, promoverRegistro, &arvoreCabecalho);
             }
+            arvoreCabecalho.status = '1';
+            escreverCabecalhoArvore(fbin_arvore, arvoreCabecalho);
             fclose(fbin_arvore);
-            //Pula para não inserir no arquivo de dados
-            if( flag){
+            if(flag){
                 continue;
             }
         }
@@ -250,20 +248,21 @@ void insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinha
     atualizarCabecalho(cabecalho, fbin);
     //Fechamento da stream
     fclose(fbin);
+    return 0;
 }
 
 
 void update(char *arquivoBin, int nroUpdate, char ***matrizes, int* nroLinhas){
     FILE *fbin;
     if(arquivoBin == NULL || !(fbin = fopen(arquivoBin, "r+b"))){
-        printf("Falha no processamento do arquivo!\n");
+        printf("Falha no processamento do arquivo.\n");
         return;
     }
 
     //Leitura do cabecalho do arquivo
     CABECALHO cabecalho;
     if(!lerCabecalho(fbin, &cabecalho)){
-        printf("Falha no processamento do arquivo!\n");
+        printf("Falha no processamento do arquivo.\n");
         return;
     }
 
@@ -476,80 +475,28 @@ void selectFromWhere(char *arquivoBin, int quantBuscas, bool temWhere) {
     fseek(fbin, 0, SEEK_SET);
     fread(&status, sizeof(char), 1, fbin);
     if(status =='0'){
-        printf("Falha no processamento do arquivo!\n");
+        printf("Falha no processamento do arquivo.\n");
         return;
     }
     // Fazemos os "OR's" do SELECT (isso é, cada uma das buscas)
     for(int i = 0; i<quantBuscas; ++i) {
-        int cont = 0;
         int quantAnds = 0;
         // Se tiver cláusula WHERE (função 3), podemos ter AND - chamado de "m"/"quantidade de vezes que o par nome e valor do campo pode repetir na busca
         if(temWhere) {
             scanf("%d", &quantAnds);
         }
-        char *condicoes[quantAnds][2];  
+        char *condicoes[quantAnds][2];
         if(temWhere) {
             lerCondicoesBusca(quantAnds,condicoes);
         }
-        fseek(fbin,17,SEEK_SET);
-        
-        bool encontrou = 0;
-        char removido;
-        // Procedimento padrão de leitura dos registros - lemos o primeiro int, que indica se o registro foi logicamente removido
-        // Se sim, pulamos
-        while(fread(&removido, 1, 1, fbin) == 1){
-            if(removido == '1') {
-                ++cont;
-                fseek(fbin,79,SEEK_CUR);
-                continue;
+        bool temCodEstacao = false;
+        for(int j = 0; j < quantAnds; j++) {
+            if((int)(intptr_t)condicoes[j][0] == 2) {
+                temCodEstacao = true;
+                break;
             }
-
-            // Definimos o registro para lê-lo e verificar se atende aos requisitos do WHERE
-            REGISTRO registro;
-            registro.removido = '0';
-            bool ok = lerRegistroVerifica(fbin,&registro,quantAnds,condicoes);
-
-            // Se encontrou ao menos um registro condizente com os parâmetros de busca, imprimimos as informações do registro
-            if(ok) {
-                encontrou = 1;
-                // Antes de imprimir, verificamos se os campos são nulos, exceto pelo código e nome da estação, que são, garantidamente, não nulos
-                // para fazer a impressão apropriada
-                printf("%d ", registro.codEstacao);
-                printf("%s ", registro.nomeEstacao);
-                if(registro.codLinha == -1) {
-                    printf("NULO "); 
-                } else {
-                    printf("%d ", registro.codLinha);
-                }
-                if(registro.tamNomeLinha == 0) {
-                    printf("NULO "); 
-                } else {
-                    printf("%s ", registro.nomeLinha);
-                }
-                if(registro.codProxEstacao == -1) {
-                    printf("NULO "); 
-                } else {
-                    printf("%d ", registro.codProxEstacao);
-                }
-                if(registro.distProxEstacao == -1) {
-                    printf("NULO "); 
-                } else {
-                    printf("%d ", registro.distProxEstacao);
-                }
-                if(registro.codLinhaIntegra == -1) {
-                    printf("NULO ");
-                 } else {
-                    printf("%d ", registro.codLinhaIntegra);
-                 }
-                if(registro.codEstIntegra == -1) {
-                    printf("NULO\n"); 
-                }else {
-                    printf("%d\n", registro.codEstIntegra);
-                }
-            }
-            
-            finalizarBusca(fbin,&cont);
         }
+        bool encontrou = buscaSequencial(fbin, condicoes, quantAnds, temCodEstacao);
         // Se nenhum registro foi encontrado, fazemos a impressão conforme pedido
         if(!encontrou) {
             printf("Registro inexistente.\n");
@@ -573,7 +520,7 @@ bool deleteFromWhere(char *arquivoBin, int quantRemocoes, char ***matrizes, int 
 
     CABECALHO cabecalho;
     if(!lerCabecalho(fbin, &cabecalho)){
-        printf("Falha no processamento doarquivo!\n");
+        printf("Falha no processamento do arquivo.\n");
         return false;
     }
 
@@ -583,7 +530,6 @@ bool deleteFromWhere(char *arquivoBin, int quantRemocoes, char ***matrizes, int 
 
     // Fazemos os "OR's" da remoção (ou quantidade de remoções diferentes a serem feitas)
     for(int i = 0; i<quantRemocoes; ++i) {
-        int cont = 0;
         int quantAnds = 1;
         // Pedimos quantos "AND's" tem esse DELETE (quantas condições um registro tem que cumprir para ser deletado)
         scanf("%d", &quantAnds);
@@ -591,69 +537,7 @@ bool deleteFromWhere(char *arquivoBin, int quantRemocoes, char ***matrizes, int 
         char *condicoes[quantAnds][2];
         lerCondicoesBusca(quantAnds,condicoes);
         
-        fseek(fbin, 17, SEEK_SET);
-
-        char removido;
-
-        // Procedimento padrão de leitura dos registros - lemos o primeiro int, que indica se o registro foi logicamente removido
-        // Se sim, pulamos
-        while(fread(&removido, 1, 1, fbin) == 1){
-            if(removido == '1') {
-                fseek(fbin, 79, SEEK_CUR);
-                ++cont;
-                continue;
-            }
-
-            // Definimos o registro para lê-lo e verificar se atende aos requisitos do WHERE
-            REGISTRO registro;
-            registro.removido = '0';
-            bool ok = lerRegistroVerifica(fbin, &registro, quantAnds, condicoes);
-            // Se o registro atender aos requisitos do WHERE, fazemos a sua deleção
-            if(ok) {
-                // Reposicionamos o cursor no início do registro
-                fseek(fbin, tamHeader + (cont * tamRegistro), SEEK_SET);
-                
-                // Marcamos o registro como logicamente removido e atualizamos o cabeçalho conforme a necessidade
-                char marcarRemocao = '1';
-                fwrite(&marcarRemocao, 1, 1, fbin);
-                fwrite(&cabecalho.topo, 4, 1, fbin);
-                cabecalho.topo = cont;
-                char codEstacaoAnt[11], codProxAnt[11];
-                if(registro.codEstacao == -1) {
-                    strcpy(codEstacaoAnt, "");
-                }
-                else {
-                    sprintf(codEstacaoAnt, "%d", registro.codEstacao);
-                }
-                if(registro.codProxEstacao == -1) {
-                    strcpy(codProxAnt, ""); 
-                } else {
-                    sprintf(codProxAnt, "%d", registro.codProxEstacao);
-                }
-                // Apagamos o registro da matriz
-                for(int k = 0; k < *nroLinhas; ++k) {
-                    // Verificamos se o registro na matriz corresponde ao que estamos lidando com
-                    if(!strcmp(matrizes[0][k], registro.nomeEstacao) && !strcmp(matrizes[1][k], codEstacaoAnt) && !strcmp(matrizes[2][k], codProxAnt)) {
-                        // Limpamos as informações do registro na matriz
-                        strcpy(matrizes[0][k], "");
-                        strcpy(matrizes[1][k], "");
-                        strcpy(matrizes[2][k], "");
-                        // Se encontramos o registro na matriz, paramos
-                        break;
-                    }
-                }
-
-                // Checamos se as duplicidades ainda existem na matriz e atualizamos o cabeçalho conforme necessidade
-                if(!duplicidadeEstacoes(matrizes, nroLinhas, registro.nomeEstacao)) {
-                    --cabecalho.nroEstacoes;
-                }
-                if(!duplicidadeParesEstacao(matrizes, nroLinhas, codProxAnt, codEstacaoAnt)) {
-                    --cabecalho.nroParesEstacao;
-                }
-            }
-            
-            finalizarBusca(fbin,&cont);
-        }
+        removerSequencial(fbin, NULL, &cabecalho, NULL, quantAnds, condicoes, matrizes, nroLinhas);
         
         liberarCondicoes(quantAnds,condicoes);
     }

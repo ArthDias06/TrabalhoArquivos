@@ -1,4 +1,5 @@
 #include"arvoreb.h"
+#include"matriz.h"
 
 void criaRaiz(FILE* fbin, int promover, int promoverChave, int promoverRegistro, ARVOREB_CABECALHO *cabecalho){
     PAGINA pagina = inicializaPagina();
@@ -295,7 +296,7 @@ bool isFolha(PAGINA pagina) {
     return false;
 }
  
-void liberaPagina(FILE *fArvore, ARVOREB_CABECALHO *cabecalho, int rrn) {
+void liberarPagina(FILE *fArvore, ARVOREB_CABECALHO *cabecalho, int rrn) {
     char marca = '1';
     int prox = cabecalho->topo;
     fseek(fArvore, 17+53*rrn, SEEK_SET);
@@ -305,7 +306,7 @@ void liberaPagina(FILE *fArvore, ARVOREB_CABECALHO *cabecalho, int rrn) {
     --cabecalho->nroNos;
 }
  
-void buscaSucessor(FILE *fArvore, int rrn, int *chave, int *p) {
+void buscarSucessor(FILE *fArvore, int rrn, int *chave, int *p) {
     PAGINA pagina = lerNO(fArvore, rrn);
     while(!isFolha(pagina)) {
         rrn = pagina.filho[0];
@@ -315,7 +316,7 @@ void buscaSucessor(FILE *fArvore, int rrn, int *chave, int *p) {
     *p = pagina.registro[0];
 }
  
-void removeChaveFolha(PAGINA *pagina, int posicao) {
+void removerChaveFolha(PAGINA *pagina, int posicao) {
     for(int i = posicao; i<pagina->nroChaves-1; ++i) {
         pagina->chave[i] = pagina->chave[i+1];
         pagina->registro[i] = pagina->registro[i+1];
@@ -325,7 +326,7 @@ void removeChaveFolha(PAGINA *pagina, int posicao) {
     pagina->registro[pagina->nroChaves] = -1;
 }
  
-void redistribui(FILE *fArvore, int rrnPai, int separacao) {
+void redistribuir(FILE *fArvore, int rrnPai, int separacao) {
     PAGINA pai = lerNO(fArvore, rrnPai);
     int rrnEsquerda = pai.filho[separacao], rrnDireita = pai.filho[separacao+1];
     PAGINA esquerda = lerNO(fArvore, rrnEsquerda), direita = lerNO(fArvore, rrnDireita);
@@ -383,7 +384,7 @@ void redistribui(FILE *fArvore, int rrnPai, int separacao) {
     escreverNO(fArvore,rrnPai,pai);
 }
  
-void concatena(FILE *fArvore, ARVOREB_CABECALHO *cabecalho, int rrnPai, int separacao) {
+void concatenar(FILE *fArvore, ARVOREB_CABECALHO *cabecalho, int rrnPai, int separacao) {
     PAGINA pai = lerNO(fArvore, rrnPai);
     int rrnEsquerda = pai.filho[separacao], rrnDireita = pai.filho[separacao+1];
     PAGINA esquerda = lerNO(fArvore, rrnEsquerda), direita = lerNO(fArvore, rrnDireita);
@@ -405,7 +406,7 @@ void concatena(FILE *fArvore, ARVOREB_CABECALHO *cabecalho, int rrnPai, int sepa
     }
  
     escreverNO(fArvore, rrnEsquerda, esquerda);
-    liberaPagina(fArvore, cabecalho, rrnDireita);
+    liberarPagina(fArvore, cabecalho, rrnDireita);
  
     for(int i = separacao; i<pai.nroChaves-1; ++i) {
         pai.chave[i] = pai.chave[i+1];
@@ -425,27 +426,27 @@ void trataUnderflow(FILE *fArvore, ARVOREB_CABECALHO *cabecalho, int rrnPai, int
     if(posFilho<pai.nroChaves) {
         PAGINA direita = lerNO(fArvore, pai.filho[posFilho+1]);
         if(direita.nroChaves>minchaves) {
-            redistribui(fArvore, rrnPai, posFilho);
+            redistribuir(fArvore, rrnPai, posFilho);
             return;
         }
     }
     if(posFilho>0) {
         PAGINA esquerda = lerNO(fArvore, pai.filho[posFilho-1]);
         if(esquerda.nroChaves>minchaves) {
-            redistribui(fArvore, rrnPai, posFilho-1);
+            redistribuir(fArvore, rrnPai, posFilho-1);
             return;
         }
     }
     if(posFilho>0) {
-        concatena(fArvore, cabecalho, rrnPai, posFilho-1);
+        concatenar(fArvore, cabecalho, rrnPai, posFilho-1);
         return;
     }
     
-    concatena(fArvore, cabecalho, rrnPai, posFilho);
+    concatenar(fArvore, cabecalho, rrnPai, posFilho);
 }
  
  
-bool removeChaveArvoreInterno(FILE *fArvore, ARVOREB_CABECALHO *cabecalho, int rrn, int chave) {
+bool removerChaveArvoreInterno(FILE *fArvore, ARVOREB_CABECALHO *cabecalho, int rrn, int chave) {
     int posicao;
     bool achou;
     PAGINA pagina = localizaNo(fArvore, rrn, chave, &posicao, &achou);
@@ -454,7 +455,7 @@ bool removeChaveArvoreInterno(FILE *fArvore, ARVOREB_CABECALHO *cabecalho, int r
         if(!achou) {
             return false;
         }
-        removeChaveFolha(&pagina, posicao);
+        removerChaveFolha(&pagina, posicao);
         escreverNO(fArvore, rrn, pagina);
         if(pagina.nroChaves<minchaves) {
             return true;
@@ -464,15 +465,15 @@ bool removeChaveArvoreInterno(FILE *fArvore, ARVOREB_CABECALHO *cabecalho, int r
  
     if(achou) {
         int chave2,posicao2;
-        buscaSucessor(fArvore, pagina.filho[posicao+1], &chave2, &posicao2);
+        buscarSucessor(fArvore, pagina.filho[posicao+1], &chave2, &posicao2);
         pagina.chave[posicao] = chave2;
         pagina.registro[posicao] = posicao2;
         escreverNO(fArvore, rrn, pagina);
-        if(removeChaveArvoreInterno(fArvore, cabecalho, pagina.filho[posicao+1], chave2)) {
+        if(removerChaveArvoreInterno(fArvore, cabecalho, pagina.filho[posicao+1], chave2)) {
             trataUnderflow(fArvore, cabecalho, rrn, posicao+1);
         }
     } else {
-        if(removeChaveArvoreInterno(fArvore, cabecalho, pagina.filho[posicao], chave)) {
+        if(removerChaveArvoreInterno(fArvore, cabecalho, pagina.filho[posicao], chave)) {
             trataUnderflow(fArvore, cabecalho, rrn, posicao);
         }
     }
@@ -484,19 +485,19 @@ bool removeChaveArvoreInterno(FILE *fArvore, ARVOREB_CABECALHO *cabecalho, int r
     return false;
 }
  
-void removeChaveArvore(FILE *fArvore, ARVOREB_CABECALHO *cabecalho, int chave) {
+void removerChaveArvore(FILE *fArvore, ARVOREB_CABECALHO *cabecalho, int chave) {
     if(cabecalho->noRaiz == -1) {
         return;
     }
  
-    removeChaveArvoreInterno(fArvore, cabecalho, cabecalho->noRaiz, chave);
+    removerChaveArvoreInterno(fArvore, cabecalho, cabecalho->noRaiz, chave);
  
     PAGINA raiz = lerNO(fArvore, cabecalho->noRaiz);
     if(raiz.nroChaves == 0) {
         if(!isFolha(raiz)) {
             int antigaRaiz = cabecalho->noRaiz;
             cabecalho->noRaiz = raiz.filho[0];
-            liberaPagina(fArvore, cabecalho, antigaRaiz);
+            liberarPagina(fArvore, cabecalho, antigaRaiz);
             PAGINA novaRaiz = lerNO(fArvore, cabecalho->noRaiz);
             if(isFolha(novaRaiz)) {
                 novaRaiz.tipoNo = -1;
@@ -505,7 +506,7 @@ void removeChaveArvore(FILE *fArvore, ARVOREB_CABECALHO *cabecalho, int chave) {
             }
             escreverNO(fArvore, cabecalho->noRaiz, novaRaiz);
         } else {
-            liberaPagina(fArvore, cabecalho, cabecalho->noRaiz);
+            liberarPagina(fArvore, cabecalho, cabecalho->noRaiz);
             cabecalho->noRaiz = -1;
         }
     }
@@ -562,13 +563,16 @@ void escreverCabecalhoArvore(FILE *fArvore, ARVOREB_CABECALHO cab) {
     fwrite(&cab.proxRRN, sizeof(int), 1, fArvore);
     fwrite(&cab.nroNos, sizeof(int), 1, fArvore);
 }
- 
-void executaRemocoes(FILE *fbin, FILE *fArvore, CABECALHO *cabDados, ARVOREB_CABECALHO *cabArvore, int n) {
+
+void executarRemocoes(FILE *fbin, FILE *fArvore, CABECALHO *cabDados, ARVOREB_CABECALHO *cabArvore, int n, char ***matrizes, int *nroLinhas) {
+    // Fazemos os OR's do DELETE
     for(int i = 0; i<n; ++i) {
         int quantAnds;
         scanf("%d", &quantAnds);
         char *condicoes[quantAnds][2];
         lerCondicoesBusca(quantAnds, condicoes);
+
+        // Verificamos se o codEstacao está entre as condições de busca
         bool temChave = false;
         int chaveBusca = -1;
         for(int j = 0; j<quantAnds; ++j) {
@@ -577,64 +581,41 @@ void executaRemocoes(FILE *fbin, FILE *fArvore, CABECALHO *cabDados, ARVOREB_CAB
                 chaveBusca = atoi(condicoes[j][1]);
             }
         }
+
+        // Se a busca tiver o codEstacao, recuperamos com o índice árvore-B
+        // Se for busca sem o campo chave, apenas percorremos o arquivo de dados de maneira sequencial
         if(temChave) {
-            int posicao = buscaChave(fArvore, chaveBusca, cabArvore->noRaiz);
-            if(posicao != -1) {
-                fseek(fbin, tamHeader + posicao*tamRegistro, SEEK_SET);
+            int offset = buscaChave(fArvore, chaveBusca, cabArvore->noRaiz);
+            if(offset != -1) {
+                int rrn = (offset - tamHeader) / tamRegistro;
+                fseek(fbin, offset, SEEK_SET);
                 char removido;
                 fread(&removido, sizeof(char), 1, fbin);
                 if(removido != '1') {
                     REGISTRO registro;
                     registro.removido = '0';
-                    bool ok = lerRegistroVerifica(fbin, &registro,quantAnds, condicoes);
+                    bool ok = lerRegistroVerifica(fbin, &registro, quantAnds, condicoes);
                     if(ok) {
                         char marca = '1';
-                        fseek(fbin, tamHeader + posicao * tamRegistro, SEEK_SET);
+                        fseek(fbin, offset, SEEK_SET);
                         fwrite(&marca, sizeof(char), 1, fbin);
                         fwrite(&cabDados->topo, sizeof(int), 1, fbin);
-                        cabDados->topo = posicao;
-                        --cabDados->nroEstacoes;
-                        if(registro.codProxEstacao != -1) {
-                            --cabDados->nroParesEstacao;
-                        }
-                        removeChaveArvore(fArvore, cabArvore, registro.codEstacao);
+                        cabDados->topo = rrn;
+                        atualizarRemocaoMatriz(cabDados, matrizes, nroLinhas, registro);
+                        removerChaveArvore(fArvore, cabArvore, registro.codEstacao);
                     }
                 }
             }
-        } else {
-            int posicao = 0;
-            fseek(fbin, tamHeader, SEEK_SET);
-            char removido;
-            while(fread(&removido, sizeof(char), 1, fbin) == 1) {
-                if(removido == '1') {
-                    fseek(fbin, tamRegistro - 1, SEEK_CUR);
-                    ++posicao;
-                    continue;
-                }
-                REGISTRO registro;
-                registro.removido = '0';
-                bool ok = lerRegistroVerifica(fbin, &registro, quantAnds, condicoes);
-                if(ok) {
-                    char marca = '1';
-                    fseek(fbin, tamHeader + posicao*tamRegistro, SEEK_SET);
-                    fwrite(&marca, sizeof(char), 1, fbin);
-                    fwrite(&cabDados->topo, sizeof(int), 1, fbin);
-                    cabDados->topo = posicao;
-                    --cabDados->nroEstacoes;
-                    if(registro.codProxEstacao != -1) {
-                        --cabDados->nroParesEstacao;
-                    }
-                    removeChaveArvore(fArvore, cabArvore, registro.codEstacao);
-                    fseek(fbin, tamHeader + (posicao+1) * tamRegistro, SEEK_SET);
-                }
-                ++posicao;
-            }
+        }
+        else {
+            removerSequencial(fbin, fArvore, cabDados, cabArvore, quantAnds, condicoes, matrizes, nroLinhas);
         }
         liberarCondicoes(quantAnds, condicoes);
     }
 }
 
-void delete(char *arquivoBin, char *arquivoArvore, int n) {
+void deleteFromWhereArvore(char *arquivoBin, char *arquivoArvore, int n, char ***matrizes, int *nroLinhas) {
+    // Processamento padrão de arquivos
     FILE *fbin;
     if(arquivoBin == NULL || !(fbin = fopen(arquivoBin, "r+b"))) {
         printf("Falha no processamento do arquivo.\n");
@@ -654,13 +635,159 @@ void delete(char *arquivoBin, char *arquivoArvore, int n) {
         fclose(fArvore);
         return;
     }
-    executaRemocoes(fbin, fArvore, &cabDados, &cabArvore, n);
+
+    // Garantimos que a matriz esteja atualizada de acordo
+    if(*nroLinhas <= 0) {
+        populaMatriz(matrizes, nroLinhas, fbin, cabDados.proxRRN);
+    }
+
+    executarRemocoes(fbin, fArvore, &cabDados, &cabArvore, n, matrizes, nroLinhas);
     cabDados.status = '1';
     escreverCabecalhoDados(fbin, cabDados);
     cabArvore.status = '1';
     escreverCabecalhoArvore(fArvore, cabArvore);
     fclose(fbin);
     fclose(fArvore);
-    BinarioNaTela(arquivoBin);
-    BinarioNaTela(arquivoArvore);
+}
+
+void selectFromWhereArvore(char *arquivoBin, char *arquivoArvore, int quantBuscas) {
+    // Processamento padrão dos arquivos
+    FILE *fbin;
+    if(arquivoBin == NULL || !(fbin = fopen(arquivoBin, "rb"))){
+        printf("Falha no processamento do arquivo.\n");
+        return;
+    }
+    FILE *fArvore;
+    if(arquivoArvore == NULL || !(fArvore = fopen(arquivoArvore, "rb"))){
+        printf("Falha no processamento do arquivo.\n");
+        fclose(fbin);
+        return;
+    }
+
+    // Conferimos a consistência do arquivo
+    char status;
+    fseek(fbin, 0, SEEK_SET);
+    fread(&status, sizeof(char), 1, fbin);
+    if(status == '0'){
+        printf("Falha no processamento do arquivo.\n");
+        fclose(fbin);
+        fclose(fArvore);
+        return;
+    }
+    // Conferimos a consistência do índice e lemos o RRN do raiz
+    int noRaiz;
+    fseek(fArvore, 0, SEEK_SET);
+    fread(&status, sizeof(char), 1, fArvore);
+    if(status == '0'){
+        printf("Falha no processamento do arquivo.\n");
+        fclose(fbin);
+        fclose(fArvore);
+        return;
+    }
+    fread(&noRaiz, sizeof(int), 1, fArvore);
+ 
+    // Fazemos os "OR's" do SELECT (isso é, cada uma das buscas)
+    for(int i = 0; i<quantBuscas; ++i) {
+        int quantAnds = 0;
+        scanf("%d", &quantAnds);
+        char *condicoes[quantAnds][2];
+        lerCondicoesBusca(quantAnds, condicoes);
+ 
+        // Verificamos se o codEstacao está entre as condições de busca
+        bool temChave = false;
+        int chaveBusca = -1;
+        for(int j = 0; j<quantAnds; ++j) {
+            if((int)(intptr_t)condicoes[j][0] == 2) {
+                temChave = true;
+                chaveBusca = strcmp(condicoes[j][1], "NULO")==0 ? -1 : atoi(condicoes[j][1]);
+            }
+        }
+ 
+        bool encontrou = 0;
+        // Se a busca tiver o codEstacao, recuperamos com o índice árvore-B
+        // Se for busca sem o campo chave, apenas percorremos o arquivo de dados de maneira sequencial, como no selectFromWhere
+        if(temChave) {
+            int offset = buscaChave(fArvore, chaveBusca, noRaiz);
+            if(offset != -1) {
+                fseek(fbin, offset, SEEK_SET);
+                char removido;
+                fread(&removido, sizeof(char), 1, fbin);
+                // Pulamos registros logicamente removidos
+                if(removido != '1') {
+                    REGISTRO registro;
+                    registro.removido = '0';
+                    bool ok = lerRegistroVerifica(fbin, &registro, quantAnds, condicoes);
+                    if(ok) {
+                        encontrou = 1;
+                        imprimeRegistro(registro);
+                    }
+                }
+            }
+        }
+        else {
+            encontrou = buscaSequencial(fbin, condicoes, quantAnds, false);
+        }
+ 
+        if(!encontrou) {
+            printf("Registro inexistente.\n");
+        }
+        liberarCondicoes(quantAnds, condicoes);
+        printf("\n");
+    }
+    fclose(fbin);
+    fclose(fArvore);
+}
+
+
+ void atualizarRemocaoMatriz(CABECALHO *cabDados, char ***matrizes, int *nroLinhas, REGISTRO registro) {
+    char codEstacaoAnt[11], codProxAnt[11];
+    if(registro.codEstacao == -1) {
+        strcpy(codEstacaoAnt, "");
+    } else {
+        sprintf(codEstacaoAnt, "%d", registro.codEstacao);
+    }
+    if(registro.codProxEstacao == -1) {
+        strcpy(codProxAnt, "");
+    } else {
+        sprintf(codProxAnt, "%d", registro.codProxEstacao);
+    }
+    for(int k = 0; k<*nroLinhas; ++k) {
+        if(!strcmp(matrizes[0][k], registro.nomeEstacao) && !strcmp(matrizes[1][k], codEstacaoAnt) && !strcmp(matrizes[2][k], codProxAnt)) {
+            strcpy(matrizes[0][k], "");
+            strcpy(matrizes[1][k], "");
+            strcpy(matrizes[2][k], "");
+            break;
+        }
+    }
+    if(!duplicidadeEstacoes(matrizes, nroLinhas, registro.nomeEstacao)) {
+        --cabDados->nroEstacoes;
+    }
+    if(!duplicidadeParesEstacao(matrizes, nroLinhas, codProxAnt, codEstacaoAnt)) {
+        --cabDados->nroParesEstacao;
+    }
+}
+
+void removerSequencial(FILE *fbin, FILE *fArvore, CABECALHO *cabDados, ARVOREB_CABECALHO *cabArvore, int quantAnds, char *condicoes[][2], char ***matrizes, int *nroLinhas) {
+    int pos = 0;
+    char removido;
+    fseek(fbin, tamHeader, SEEK_SET);
+    while(fread(&removido, sizeof(char), 1, fbin) == 1) {
+        if(removido != '1') {
+            REGISTRO registro;
+            registro.removido = '0';
+            if(lerRegistroVerifica(fbin, &registro, quantAnds, condicoes)) {
+                char marca = '1';
+                fseek(fbin, tamHeader + pos*tamRegistro, SEEK_SET);
+                fwrite(&marca, sizeof(char), 1, fbin);
+                fwrite(&cabDados->topo, sizeof(int), 1, fbin);
+                cabDados->topo = pos;
+                atualizarRemocaoMatriz(cabDados, matrizes, nroLinhas, registro);
+                if(fArvore != NULL) {
+                    removerChaveArvore(fArvore, cabArvore, registro.codEstacao);
+                }
+            }
+        }
+        ++pos;
+        fseek(fbin, tamHeader + pos*tamRegistro, SEEK_SET);
+    }
 }

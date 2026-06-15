@@ -46,4 +46,7 @@
 
     int converterStringParaInt(char *);
 
+    void imprimeRegistro(REGISTRO registro);
+    bool buscaSequencial(FILE *fbin, char *condicoes[][2], int quantAnds, bool pararNoPrimeiro);
+
 #endif
