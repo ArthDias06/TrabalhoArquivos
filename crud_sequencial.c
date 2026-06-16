@@ -1,4 +1,5 @@
 #include "crud.h"
+// Esse arquivo contém as funções de operações do CRUD aplicadas da forma sequencial
 
 bool createTable(char* csv, char* bin, char*** matrizes, int* nroLinhas){
     FILE *fbin;

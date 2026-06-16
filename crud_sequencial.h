@@ -11,6 +11,7 @@
 #include "registro.h"
 #include "matriz.h"
 #include "util.h"
+// Esse arquivo contém as funções de operações do CRUD aplicadas da forma sequencial
 
 bool createTable(char *, char *, char ***, int *);
 bool insertInto(char *, int, char ***, int *, bool, char*);
