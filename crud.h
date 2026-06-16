@@ -15,7 +15,7 @@
 
     bool createTable(char *, char *, char ***, int *);
     bool insertInto(char *, int,  char ***, int *, bool, char*);
-    void update(char *, int, char ***, int *);
+    bool update(char *, int, char ***, int *);
     void selectFromWhere(char *, int, bool);
     bool deleteFromWhere(char *,int, char ***, int *);
 

@@ -1,26 +1,34 @@
 #include"arvoreb.h"
 #include"matriz.h"
 
+//Criação de nova raiz quando necessário
 void criaRaiz(FILE* fbin, int promover, int promoverChave, int promoverRegistro, ARVOREB_CABECALHO *cabecalho){
     PAGINA pagina = inicializaPagina();
     int rrn = cabecalho->noRaiz;
     int filho, tipoNo;
+    //Escreve os valores promovidos para raiz na nova página
     pagina.chave[0] = promoverChave;
     pagina.registro[0] = promoverRegistro;
+    //O nó esquerdo é a antiga raiz
     pagina.filho[0] = cabecalho->noRaiz;
     pagina.filho[1] = promover;
+    //Verifica se a página deve ser tratada como uma raiz ou folha(só no primeiro nó criado)
     if(pagina.filho[0] == -1){
-        pagina.tipoNo = -1;//Nó folha = nó raiz
+        pagina.tipoNo = -1;//Nó folha
     } else {
         pagina.tipoNo = 0;//Nó raiz
     }
     pagina.nroChaves++;
+    //A raiz é alocada no próximo espeaço livre da árvore
     cabecalho->noRaiz = cabecalho->proxRRN;
-    //Só é válido se já há uma raiz
+    //Muda o tipo nó da antiga raiz, caso ela exista
     if(rrn != -1){
+        //Vai para a posição filho[0] da antiga raiz
         fseek(fbin, 54+53*rrn, SEEK_SET);
         fread(&filho, sizeof(int), 1, fbin);
+        //Volta para a posição do tipo nó
         fseek(fbin, -36, SEEK_CUR);
+        //Se o filho não existir(-1) a antiga raiz é folha, caso contrário é intermediária
         if(filho != -1){
             tipoNo = 1;
         }
@@ -28,46 +36,53 @@ void criaRaiz(FILE* fbin, int promover, int promoverChave, int promoverRegistro,
         //Atualiza o tipo no do antigo nó raiz no arquivo
         fwrite(&tipoNo, sizeof(int), 1, fbin);
     }
+    //Atualiza o cabeçalho no arquivo
     escreverNO(fbin, cabecalho->proxRRN, pagina);
     cabecalho->proxRRN++;
     cabecalho->nroNos++;
 }
 
 
-void createIndex(char* arq, char* arvore_arq){
+bool createIndex(char* arq, char* arvore_arq){
     FILE *fbin;
     if (arq == NULL || !(fbin = fopen(arq, "rb"))) {
         printf("Falha no processamento do arquivo.\n");
-        return;
+        return true;
     }
     FILE *fbin_arvore;
-    //É aberto como write+ por conta de que o ponteiro do arquivo pode ser usado para leitura no insert
+    //É aberto como write+ por conta de que o ponteiro do arquivo pode ser usado para leitura no decorrer do insert
     if (arvore_arq == NULL || !(fbin_arvore = fopen(arvore_arq, "w+b"))) {
         printf("Falha no processamento do arquivo.\n");
         fclose(fbin);
-        return;
+        return true;
     }
+    //Inicializa o cabeçalho com seus valores-base
     ARVOREB_CABECALHO cabecalho = {'0', -1, -1, 0, 0};
+    //Escreve o cabeçalho no arquivo
     escreverCabecalhoArvore(fbin_arvore, cabecalho);
     fseek(fbin, 0, SEEK_SET);
     char status, removido;
+    //Verifica a consistência do arquivo de dados
     fread(&status, sizeof(char), 1, fbin);
+    //Se for inconsistente, retorna erro
     if(status == '0'){
         printf("Falha no processamento do arquivo!");
         fclose(fbin);
         fclose(fbin_arvore);
-        return;
+        return true;
     }
     int rrn=-1;
+    //Ignora o cabeçalho
     fseek(fbin, 16, SEEK_CUR);
     while(fread(&removido, sizeof(char), 1, fbin) == 1){
-        //Armazena a posição so registro
+        //Armazena a posição do registro
         rrn++;
+        //Se for removido, ignora o registro
         if(removido == '1') {
             fseek(fbin,79,SEEK_CUR);
             continue;
         }
-        //Ignora o campo próximo
+        //Pula o campo próximo
         fseek(fbin, 4, SEEK_CUR);
         int chave, promover, promoverChave, promoverRegistro;
         bool flag = false;
@@ -75,19 +90,23 @@ void createIndex(char* arq, char* arvore_arq){
         fread(&chave, sizeof(int), 1, fbin);
         //Insere na árvore B
         if(insert(fbin_arvore, 17 + rrn*80, cabecalho.noRaiz, chave, &promover, &promoverChave, &promoverRegistro, &cabecalho, &flag)){
+            //Se insert retorna verdadeiro, precisa criar uma nova raiz
             criaRaiz(fbin_arvore, promover, promoverChave, promoverRegistro, &cabecalho);
         }
         //Passa para o próximo registro
         fseek(fbin, 71, SEEK_CUR);
     }
+    //atualiza o valor do cabeçalho
     cabecalho.status = '1';
     escreverCabecalhoArvore(fbin_arvore, cabecalho);
     fclose(fbin_arvore);
     fclose(fbin);
+    return false;
 }
 
-
+//Função para a busca de uma chave
 int busca(FILE *fbin, int chave, int RRN){
+    //Verifica se o RRN e o fbin são válidos
     if(RRN == -1){
         printf("Registro não encontrado!");
         return -1;
@@ -96,20 +115,28 @@ int busca(FILE *fbin, int chave, int RRN){
         printf("Falha no processamento do arquivo!");
         return -1;
     }
+    //Executa a procura da chave
     int pr = buscaChave(fbin, chave, RRN);
+    //Se pr = -1, chave não encontrada, caso contrário
+    //retorna sua posição
     if(pr == -1) {
         printf("Registro não encontrado!");
     }
     return pr;
 }
 
+//Função para procurar uma dada chave em uma paǵina e preencher uma página
 PAGINA localizaNo(FILE *fbin, int RRN, int chave, int *posicao, bool *achou) {
+    //Pega os valores da paǵina
     PAGINA pagina = lerNO(fbin, RRN);
     int i = 0;
+    //Valor de i aumenta até encontrar a posição que a chave deveria ocupar
+    //se estive rno registro
     while(i<pagina.nroChaves && chave>pagina.chave[i]) {
         ++i;
     }
     *posicao = i;
+    //Analisa se a chave existe na página
     if(i<pagina.nroChaves && chave == pagina.chave[i]) {
         *achou = true;
     } else {
@@ -119,35 +146,45 @@ PAGINA localizaNo(FILE *fbin, int RRN, int chave, int *posicao, bool *achou) {
 }
 
 int buscaChave(FILE *fbin, int chave, int RRN) {
+    //Se o RRN for -1, não foi encontrado
     if(RRN == -1) {
         return -1;
     }
     int posicao;
     bool achou;
+    //Procura uma chave em uma dada paǵina
     PAGINA pagina = localizaNo(fbin, RRN, chave, &posicao, &achou);
+    //Caso tenha sucesso na busca, retorna a posição, caso contrário,
+    //executa recursivamente a função
     if(achou) {
         return pagina.registro[posicao];
     }
     return buscaChave(fbin, chave, pagina.filho[posicao]);
 }
 
-
+//Função para inserir na página
 PAGINA ins_in_page(int chave, int registro, int filho, PAGINA pagina){
     int i;
+    //Shift das chaves já existentes até vagar a posição correta
+    //Da nova chave
     for(i = pagina.nroChaves-1; i>=0 && chave < pagina.chave[i]; i--){
         pagina.chave[i+1] = pagina.chave[i];
         pagina.registro[i+1] = pagina.registro[i];
         pagina.filho[i+2] = pagina.filho[i+1];
     }
+    //Alocação dos novos valores na página
     pagina.nroChaves++;
     pagina.chave[i+1] = chave;
     pagina.registro[i+1] = registro;
     pagina.filho[i+2] = filho;
+    //Retorno da página atualizada
     return pagina;
 }
 
 void escreverNO(FILE *fArvore, int rrn, PAGINA pagina) {
+    //Vai até um dado nó
     fseek(fArvore, 17+53*rrn, SEEK_SET);
+    //Escreve cada campo na nova página
     fwrite(&pagina.removido, sizeof(char), 1, fArvore);
     fwrite(&pagina.proximo, sizeof(int), 1, fArvore);
     fwrite(&pagina.tipoNo, sizeof(int), 1, fArvore);
@@ -164,6 +201,7 @@ void escreverNO(FILE *fArvore, int rrn, PAGINA pagina) {
 
 PAGINA inicializaPagina(){
     PAGINA pagina;
+    //Inicializa uma nova página com seus valores-base
     for(int j = 0; j<maxchaves; j++){
         pagina.chave[j] = -1;
         pagina.registro[j] = -1;
@@ -174,20 +212,25 @@ PAGINA inicializaPagina(){
     pagina.tipoNo = -1;
     pagina.nroChaves = 0;
     pagina.removido = '0';
+    //Retorna a nova paǵina
     return pagina;
 }
 
+//Função de split do insert
 PAGINA split(FILE *fbin, int chave, int filho,int registro,  PAGINA *pagina, int *promover_chave, PAGINA novaPagina, int *promover, int *promoverRegistro, ARVOREB_CABECALHO *cabecalho){
+    //Vetores para guardar as chaves de uma mesma página e os novos valores a serem inseridos
     int chavesTrabalho[ordem];
     int filhosTrabalho[ordem+1];
     int registroTrabalho[ordem];
     int i;
+    //Preeche os vetores de trabalho
     for(i = 0; i < maxchaves; i++){
         chavesTrabalho[i] = pagina->chave[i];
         filhosTrabalho[i] = pagina->filho[i];
         registroTrabalho[i] = pagina->registro[i];
     }
     filhosTrabalho[i] = pagina->filho[i];
+    //Aloca os novos valores de forma ordenada
     for(i = maxchaves; i > 0 && chave < chavesTrabalho[i-1]; i--){
         chavesTrabalho[i] = chavesTrabalho[i-1];
         filhosTrabalho[i+1] = filhosTrabalho[i];
@@ -196,41 +239,56 @@ PAGINA split(FILE *fbin, int chave, int filho,int registro,  PAGINA *pagina, int
     chavesTrabalho[i] = chave;
     filhosTrabalho[i+1] = filho;
     registroTrabalho[i] = registro;
+    //Verifica se há algum registro removido
     if(cabecalho->topo == -1){
         *promover = cabecalho->proxRRN++;
     }else{
+        //Se há removidos, processo de desempilhar e uso do
+        //espaço do nó removido antigamente
         int prox;
         *promover = cabecalho->topo;
         fseek(fbin, 18+cabecalho->topo*53, SEEK_SET);
         fread(&prox, sizeof(int), 1, fbin);
         cabecalho->topo = prox;
     }
+    //Inicializa uma nova página
     novaPagina = inicializaPagina();
+    //A nova página vai ter o tipo do nó da página já existente
+    //Ocupam o mesmo nível da árvore
     novaPagina.tipoNo = (pagina->tipoNo == -1) ? -1 : 1;
     for(i = 0; i < minchaves; i++){
+        //Aloca as primeiras chaves na página antiga
         pagina->chave[i] = chavesTrabalho[i];
         pagina->filho[i] = filhosTrabalho[i];
         pagina->registro[i] = registroTrabalho[i];
+        //Alocação das últimas chaves na nova página
         novaPagina.chave[i] = chavesTrabalho[i + 2 + minchaves];
         novaPagina.filho[i] = filhosTrabalho[i + 2 + minchaves];
         novaPagina.registro[i] = registroTrabalho[i + 2 + minchaves];
+        //Os últimos valores da antiga chave são apagados
         pagina->chave[i + minchaves + 1]  = -1;
         pagina->filho[i + minchaves + 2]  = -1;
         pagina->registro[i + minchaves + 1] = -1;
     }
+    //Escreve os valores na poosição restante da antiga chave
+    //pois ela tem uma chave a mais
     pagina->chave[i] = chavesTrabalho[i];
     pagina->filho[i] = filhosTrabalho[i];
     pagina->registro[i] = registroTrabalho[i];
     pagina->filho[minchaves + 1] = filhosTrabalho[minchaves + 1];
     novaPagina.filho[minchaves] = filhosTrabalho[i + minchaves + 2];
+    //Define o número de chaves de cada página
     pagina->nroChaves = maxchaves - minchaves;
     novaPagina.nroChaves = minchaves;
+    //Define os valores de promoção de chave e de registro
     *promover_chave = chavesTrabalho[minchaves + 1];
     *promoverRegistro = registroTrabalho[minchaves + 1];
     return novaPagina;
 }
 
+//Função do insert
 bool insert(FILE* fbin, int registro, int RRN, int chave, int *promover, int *promover_chave, int *promoverRegistro, ARVOREB_CABECALHO *cabecalho, bool *flag){
+    //Verificação da integridade do ponteiro
     if(fbin == NULL){
         printf("Erro no processamento do arquivo!");
         return false;
@@ -239,34 +297,44 @@ bool insert(FILE* fbin, int registro, int RRN, int chave, int *promover, int *pr
     PAGINA pagina, novaPagina;
     bool encontrado, promovido;
     int posicao, filho, chave_abaixo, registroAbaixo;
+    //Se foi tentado acessar um filho inexistente, preenche as variáveis de promoção
+    //com os valores-base e retorna para a função chamadora
     if(RRN == -1){
         *promover_chave = chave;
         *promoverRegistro = registro;
         *promover = -1;
+        //retorna ture, pois ppode precisar de promoção
         return true;
     }
-
+    //Vê se uma dada chave está em uma dada página
     pagina = localizaNo(fbin, RRN, chave, &posicao, &encontrado);
 
+    //Caso tenha sido encontrada, retorna pois não podemos ter duas chaves idênticas
     if(encontrado){
         *flag = true;
         return false;
     }
-
+    //Caso não tenha sido encontrada mantém a busca pelo nó em que a chave será inserida
     promovido = insert(fbin, registro, pagina.filho[posicao], chave, &filho, &chave_abaixo, &registroAbaixo, cabecalho, flag);
+    //Se ao final não houver necessidade promoção, retorna false
     if(!promovido){
         return false;
     }
+    //Se uma página ainda tiver espaço, insere nela a chave
     if(pagina.nroChaves < maxchaves){
         pagina = ins_in_page(chave_abaixo, registroAbaixo, filho, pagina);
         escreverNO(fbin, RRN, pagina);
         return false;
     }
+    //Caso contrário, realiza o split
     else{
         novaPagina = split(fbin, chave_abaixo, filho, registroAbaixo, &pagina, promover_chave, novaPagina, promover, promoverRegistro, cabecalho);
+        //Nesse caso o número de nós é alterado
         cabecalho->nroNos++;
+        //Atualiza os nós da nova e antiga páginas
         escreverNO(fbin, RRN, pagina);
         escreverNO(fbin, *promover, novaPagina);
+        //Retorna true, pois pode precisar de promoção
         return true;
     }
 }
@@ -274,6 +342,7 @@ bool insert(FILE* fbin, int registro, int RRN, int chave, int *promover, int *pr
 
 PAGINA lerNO(FILE *fArvore, int rrn) {
     PAGINA pagina;
+    //Leitura de cada campo de uma dada página
     fseek(fArvore, 17+53*rrn, SEEK_SET);
     fread(&pagina.removido, sizeof(char), 1, fArvore);
     fread(&pagina.proximo, sizeof(int), 1, fArvore);
@@ -289,6 +358,7 @@ PAGINA lerNO(FILE *fArvore, int rrn) {
     return pagina;
 }
  
+//Verificação se um dado nó é folha
 bool isFolha(PAGINA pagina) {
     if(pagina.filho[0] == -1) {
         return true;

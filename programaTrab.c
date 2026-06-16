@@ -49,18 +49,25 @@ int main(){
             // Caso 6: Comando UPDATE com cláusula WHERE
             case 6:
                 scanf("%100s %d", arquivoBin, &n);
-                update(arquivoBin, n, matrizes, &nroLinhas);
-                BinarioNaTela(arquivoBin);
+                erro = update(arquivoBin, n, matrizes, &nroLinhas);
+                if(!erro) {
+                    BinarioNaTela(arquivoBin);
+                }
                 break;
+            // Caso 7: comando createIndex
             case 7:
                 scanf("%100s %100s", arquivoBin, arquivoArvore);
-                createIndex(arquivoBin, arquivoArvore);
-                BinarioNaTela(arquivoArvore);
+                erro=createIndex(arquivoBin, arquivoArvore);
+                if(!erro) {
+                    BinarioNaTela(arquivoArvore);
+                }
                 break;
+            // Caso 8: Busca na árvore-B
             case 8:
                 scanf("%100s %100s %d", arquivoBin, arquivoArvore, &n);
                 selectFromWhereArvore(arquivoBin, arquivoArvore, n);
                 break;
+            // Caso 9: INSERT INTO com insert na árvore-B
             case 9:
                 scanf("%100s %100s %d", arquivoBin, arquivoArvore, &n);
                 erro = insertInto(arquivoBin, n, matrizes, &nroLinhas, true, arquivoArvore);
@@ -69,6 +76,7 @@ int main(){
                     BinarioNaTela(arquivoArvore);
                 }
                 break;
+            //Caso 10: Delete da árvore-B
             case 10:
                 scanf("%100s %100s %d", arquivoBin, arquivoArvore, &n);
                 deleteFromWhereArvore(arquivoBin, arquivoArvore, n, matrizes, &nroLinhas);

@@ -35,7 +35,7 @@ bool lerCabecalhoArvore(FILE *, ARVOREB_CABECALHO *);
 void escreverCabecalhoArvore(FILE *, ARVOREB_CABECALHO);
 void removeChaveArvore(FILE *, ARVOREB_CABECALHO *, int);
 void criaRaiz(FILE *, int, int, int, ARVOREB_CABECALHO *);
-void createIndex(char *, char *);
+bool createIndex(char *, char *);
 int busca(FILE *, int, int);
 PAGINA localizaNo(FILE *, int, int, int *, bool *);
 int buscaChave(FILE *, int, int);

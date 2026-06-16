@@ -147,6 +147,19 @@ bool insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinha
         printf("Falha no processamento do arquivo.\n");
         return 1;
     }
+    ARVOREB_CABECALHO arvoreCabecalho;
+    FILE* fbin_arvore;
+    //Abre o arquivo de árvore se for necessário
+    if(arvore){
+        if(arqArvore == NULL || !(fbin_arvore = fopen(arqArvore, "r+b"))){
+            printf("Falha no processamento do arquivo.\n");
+            fclose(fbin);
+            return 1;
+        }
+        //Leitura do cabeçalho da árvore
+        lerCabecalhoArvore(fbin_arvore, &arvoreCabecalho);
+    }
+    
     int proxInsercao;
     //Caso a matriz não tenha sido ainda preenchida com os valores do arquivo
     if(*nroLinhas <= 0){
@@ -188,19 +201,11 @@ bool insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinha
         if(arvore){
             int promover, promover_chave, promoverRegistro;
             bool flag = false;
-            ARVOREB_CABECALHO arvoreCabecalho;
-            FILE* fbin_arvore;
-            if(arqArvore == NULL || !(fbin_arvore = fopen(arqArvore, "r+b"))){
-                printf("Falha no processamento do arquivo.\n");
-                return 1;
-            }
-            lerCabecalhoArvore(fbin_arvore, &arvoreCabecalho);
             if(insert(fbin_arvore, 17+proxInsercao*80, arvoreCabecalho.noRaiz, registro.codEstacao, &promover, &promover_chave, &promoverRegistro, &arvoreCabecalho, &flag)){
+                //Se o insert retorna true, é necessário atualizar a raiz
                 criaRaiz(fbin_arvore, promover, promover_chave, promoverRegistro, &arvoreCabecalho);
             }
-            arvoreCabecalho.status = '1';
-            escreverCabecalhoArvore(fbin_arvore, arvoreCabecalho);
-            fclose(fbin_arvore);
+            //flag verifica se a estação já foi cadastrada, se sim, ignora
             if(flag){
                 continue;
             }
@@ -246,24 +251,28 @@ bool insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinha
     //Atualização do cabeçalho do arquivo
     cabecalho.status = '1';
     atualizarCabecalho(cabecalho, fbin);
+    //Atualização do cabeçalho da árvore
+    arvoreCabecalho.status = '1';
+    escreverCabecalhoArvore(fbin_arvore, arvoreCabecalho);
     //Fechamento da stream
     fclose(fbin);
+    fclose(fbin_arvore);
     return 0;
 }
 
 
-void update(char *arquivoBin, int nroUpdate, char ***matrizes, int* nroLinhas){
+bool update(char *arquivoBin, int nroUpdate, char ***matrizes, int* nroLinhas){
     FILE *fbin;
     if(arquivoBin == NULL || !(fbin = fopen(arquivoBin, "r+b"))){
         printf("Falha no processamento do arquivo.\n");
-        return;
+        return true;
     }
 
     //Leitura do cabecalho do arquivo
     CABECALHO cabecalho;
     if(!lerCabecalho(fbin, &cabecalho)){
         printf("Falha no processamento do arquivo.\n");
-        return;
+        return true;
     }
 
     //Se a mtriz não tiver sido preenchida ainda
@@ -461,6 +470,7 @@ void update(char *arquivoBin, int nroUpdate, char ***matrizes, int* nroLinhas){
     atualizarCabecalho(cabecalho, fbin);
     //Fechamento d astream
     fclose(fbin);
+    return false;
 }
 
 // Função que representa o SELECT FROM, com ou sem cláusula WHERE
