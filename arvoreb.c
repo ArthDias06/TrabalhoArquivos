@@ -63,7 +63,7 @@ PAGINA localizaNo(FILE *fbin, int RRN, int chave, int *posicao, bool *achou) {
     return pagina;
 }
 
-int buscaChave(FILE *fbin, int chave, int RRN) {
+int buscarChave(FILE *fbin, int chave, int RRN) {
     //Se o RRN for -1, não foi encontrado
     if(RRN == -1) {
         return -1;
@@ -77,7 +77,7 @@ int buscaChave(FILE *fbin, int chave, int RRN) {
     if(achou) {
         return pagina.registro[posicao];
     }
-    return buscaChave(fbin, chave, pagina.filho[posicao]);
+    return buscarChave(fbin, chave, pagina.filho[posicao]);
 }
 
 //Função para inserir na página
@@ -417,7 +417,7 @@ void concatenar(FILE *fArvore, ARVOREB_CABECALHO *cabecalho, int rrnPai, int sep
 }
  
 // Tratamos o underflow de um nó filho após uma remoção (nroChaves < minchaves)
-void trataUnderflow(FILE *fArvore, ARVOREB_CABECALHO *cabecalho, int rrnPai, int posFilho) {
+void tratarUnderflow(FILE *fArvore, ARVOREB_CABECALHO *cabecalho, int rrnPai, int posFilho) {
     PAGINA pai = lerNO(fArvore, rrnPai);
 
     // Verificamos se o irmão direito tem chaves para "emprestar"
@@ -473,12 +473,12 @@ bool removerChaveArvoreInterno(FILE *fArvore, ARVOREB_CABECALHO *cabecalho, int 
         escreverNO(fArvore, rrn, pagina);
         // Removemos o sucessor da subtárvore direita e tratamos underflow caso assim seja necessário
         if(removerChaveArvoreInterno(fArvore, cabecalho, pagina.filho[posicao+1], chave2)) {
-            trataUnderflow(fArvore, cabecalho, rrn, posicao+1);
+            tratarUnderflow(fArvore, cabecalho, rrn, posicao+1);
         }
     } else {
         // Se a chave não está no nó, descemos para o filho correto e tratamos underflow caso necessário
         if(removerChaveArvoreInterno(fArvore, cabecalho, pagina.filho[posicao], chave)) {
-            trataUnderflow(fArvore, cabecalho, rrn, posicao);
+            tratarUnderflow(fArvore, cabecalho, rrn, posicao);
         }
     }
 

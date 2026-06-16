@@ -110,7 +110,7 @@ bool deleteFromWhereArvore(char *arquivoBin, char *arquivoArvore, int n, char **
         // Se a busca tiver o codEstacao, recuperamos com o índice árvore-B
         // Se for busca sem o campo chave, apenas percorremos o arquivo de dados de maneira sequencial
         if(temChave) {
-            int offset = buscaChave(fArvore, chaveBusca, cabArvore.noRaiz);
+            int offset = buscarChave(fArvore, chaveBusca, cabArvore.noRaiz);
             if(offset != -1) {
                 int rrn = (offset - tamHeader) / tamRegistro;
                 fseek(fbin, offset, SEEK_SET);
@@ -204,7 +204,7 @@ void selectFromWhereArvore(char *arquivoBin, char *arquivoArvore, int quantBusca
         // Se a busca tiver o codEstacao, recuperamos com o índice árvore-B
         // Se for busca sem o campo chave, apenas percorremos o arquivo de dados de maneira sequencial, como no selectFromWhere
         if(temChave) {
-            int offset = buscaChave(fArvore, chaveBusca, noRaiz);
+            int offset = buscarChave(fArvore, chaveBusca, noRaiz);
             if(offset != -1) {
                 fseek(fbin, offset, SEEK_SET);
                 char removido;

@@ -35,10 +35,10 @@ typedef struct pagina{
 
 bool lerCabecalhoArvore(FILE *, ARVOREB_CABECALHO *);
 void escreverCabecalhoArvore(FILE *, ARVOREB_CABECALHO);
-void removeChaveArvore(FILE *, ARVOREB_CABECALHO *, int);
+void removerChaveArvore(FILE *, ARVOREB_CABECALHO *, int);
 void criaRaiz(FILE *, int, int, int, ARVOREB_CABECALHO *);
 PAGINA localizaNo(FILE *, int, int, int *, bool *);
-int buscaChave(FILE *, int, int);
+int buscarChave(FILE *, int, int);
 PAGINA ins_in_page(int, int, int, PAGINA);
 void escreverNO(FILE *, int, PAGINA);
 PAGINA inicializaPagina();
@@ -46,11 +46,11 @@ PAGINA split(FILE *, int, int, int, PAGINA *, int *, PAGINA, int *, int *, ARVOR
 bool insert(FILE *, int, int, int, int *, int *, int *, ARVOREB_CABECALHO *, bool *);
 PAGINA lerNO(FILE *, int);
 bool isFolha(PAGINA);
-void liberaPagina(FILE *, ARVOREB_CABECALHO *, int);
-void buscaSucessor(FILE *, int, int *, int *);
-void removeChaveFolha(PAGINA *, int);
-void redistribui(FILE *, int, int);
-void concatena(FILE *, ARVOREB_CABECALHO *, int, int);
-void trataUnderflow(FILE *, ARVOREB_CABECALHO *, int, int);
-bool removeChaveArvoreInterno(FILE *, ARVOREB_CABECALHO *, int, int);
+void liberarPagina(FILE *, ARVOREB_CABECALHO *, int);
+void buscarSucessor(FILE *, int, int *, int *);
+void removerChaveFolha(PAGINA *, int);
+void redistribuir(FILE *, int, int);
+void concatenar(FILE *, ARVOREB_CABECALHO *, int, int);
+void tratarUnderflow(FILE *, ARVOREB_CABECALHO *, int, int);
+bool removerChaveArvoreInterno(FILE *, ARVOREB_CABECALHO *, int, int);
 #endif
