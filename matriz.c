@@ -123,3 +123,33 @@ bool duplicidadeParesEstacao(char*** matrizes, int* nroLinhas, char* codProxEsta
     }
     return false;
 }
+
+
+// Função para atualizar a matriz quando há uma remoção
+void atualizarRemocaoMatriz(CABECALHO *cabDados, char ***matrizes, int *nroLinhas, REGISTRO registro) {
+    char codEstacaoAnt[11], codProxAnt[11];
+    if(registro.codEstacao == -1) {
+        strcpy(codEstacaoAnt, "");
+    } else {
+        sprintf(codEstacaoAnt, "%d", registro.codEstacao);
+    }
+    if(registro.codProxEstacao == -1) {
+        strcpy(codProxAnt, "");
+    } else {
+        sprintf(codProxAnt, "%d", registro.codProxEstacao);
+    }
+    for(int k = 0; k<*nroLinhas; ++k) {
+        if(!strcmp(matrizes[0][k], registro.nomeEstacao) && !strcmp(matrizes[1][k], codEstacaoAnt) && !strcmp(matrizes[2][k], codProxAnt)) {
+            strcpy(matrizes[0][k], "");
+            strcpy(matrizes[1][k], "");
+            strcpy(matrizes[2][k], "");
+            break;
+        }
+    }
+    if(!duplicidadeEstacoes(matrizes, nroLinhas, registro.nomeEstacao)) {
+        --cabDados->nroEstacoes;
+    }
+    if(!duplicidadeParesEstacao(matrizes, nroLinhas, codProxAnt, codEstacaoAnt)) {
+        --cabDados->nroParesEstacao;
+    }
+}

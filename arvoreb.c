@@ -1,5 +1,6 @@
 #include"arvoreb.h"
 #include"matriz.h"
+// Esse arquivo contém as funções internas das operações do CRUD aplicadas na árvore B
 
 //Criação de nova raiz quando necessário
 void criaRaiz(FILE* fbin, int promover, int promoverChave, int promoverRegistro, ARVOREB_CABECALHO *cabecalho){
@@ -40,89 +41,6 @@ void criaRaiz(FILE* fbin, int promover, int promoverChave, int promoverRegistro,
     escreverNO(fbin, cabecalho->proxRRN, pagina);
     cabecalho->proxRRN++;
     cabecalho->nroNos++;
-}
-
-
-bool createIndex(char* arq, char* arvore_arq){
-    FILE *fbin;
-    if (arq == NULL || !(fbin = fopen(arq, "rb"))) {
-        printf("Falha no processamento do arquivo.\n");
-        return true;
-    }
-    FILE *fbin_arvore;
-    //É aberto como write+ por conta de que o ponteiro do arquivo pode ser usado para leitura no decorrer do insert
-    if (arvore_arq == NULL || !(fbin_arvore = fopen(arvore_arq, "w+b"))) {
-        printf("Falha no processamento do arquivo.\n");
-        fclose(fbin);
-        return true;
-    }
-    //Inicializa o cabeçalho com seus valores-base
-    ARVOREB_CABECALHO cabecalho = {'0', -1, -1, 0, 0};
-    //Escreve o cabeçalho no arquivo
-    escreverCabecalhoArvore(fbin_arvore, cabecalho);
-    fseek(fbin, 0, SEEK_SET);
-    char status, removido;
-    //Verifica a consistência do arquivo de dados
-    fread(&status, sizeof(char), 1, fbin);
-    //Se for inconsistente, retorna erro
-    if(status == '0'){
-        printf("Falha no processamento do arquivo!");
-        fclose(fbin);
-        fclose(fbin_arvore);
-        return true;
-    }
-    int rrn=-1;
-    //Ignora o cabeçalho
-    fseek(fbin, 16, SEEK_CUR);
-    while(fread(&removido, sizeof(char), 1, fbin) == 1){
-        //Armazena a posição do registro
-        rrn++;
-        //Se for removido, ignora o registro
-        if(removido == '1') {
-            fseek(fbin,79,SEEK_CUR);
-            continue;
-        }
-        //Pula o campo próximo
-        fseek(fbin, 4, SEEK_CUR);
-        int chave, promover, promoverChave, promoverRegistro;
-        bool flag = false;
-        //Chave tem o valor de codEstacao do registro
-        fread(&chave, sizeof(int), 1, fbin);
-        //Insere na árvore B
-        if(insert(fbin_arvore, 17 + rrn*80, cabecalho.noRaiz, chave, &promover, &promoverChave, &promoverRegistro, &cabecalho, &flag)){
-            //Se insert retorna verdadeiro, precisa criar uma nova raiz
-            criaRaiz(fbin_arvore, promover, promoverChave, promoverRegistro, &cabecalho);
-        }
-        //Passa para o próximo registro
-        fseek(fbin, 71, SEEK_CUR);
-    }
-    //atualiza o valor do cabeçalho
-    cabecalho.status = '1';
-    escreverCabecalhoArvore(fbin_arvore, cabecalho);
-    fclose(fbin_arvore);
-    fclose(fbin);
-    return false;
-}
-
-//Função para a busca de uma chave
-int busca(FILE *fbin, int chave, int RRN){
-    //Verifica se o RRN e o fbin são válidos
-    if(RRN == -1){
-        printf("Registro não encontrado!");
-        return -1;
-    }
-    if(fbin == NULL){
-        printf("Falha no processamento do arquivo!");
-        return -1;
-    }
-    //Executa a procura da chave
-    int pr = buscaChave(fbin, chave, RRN);
-    //Se pr = -1, chave não encontrada, caso contrário
-    //retorna sua posição
-    if(pr == -1) {
-        printf("Registro não encontrado!");
-    }
-    return pr;
 }
 
 //Função para procurar uma dada chave em uma paǵina e preencher uma página
@@ -396,11 +314,13 @@ void removerChaveFolha(PAGINA *pagina, int posicao) {
     pagina->registro[pagina->nroChaves] = -1;
 }
  
+// Função que redistribui chaves entre dois nós irmãos
 void redistribuir(FILE *fArvore, int rrnPai, int separacao) {
     PAGINA pai = lerNO(fArvore, rrnPai);
     int rrnEsquerda = pai.filho[separacao], rrnDireita = pai.filho[separacao+1];
     PAGINA esquerda = lerNO(fArvore, rrnEsquerda), direita = lerNO(fArvore, rrnDireita);
- 
+
+    // Colocamos chaves, posições e filhos dos 2 nós e do separador em vetores
     int totalChaves = 0, totalFilhos = 0, filhos[ordem*2+1], posicoes[ordem*2], chaves[ordem*2];
     for(int i = 0; i<esquerda.nroChaves; ++i) {
         chaves[totalChaves] = esquerda.chave[i];
@@ -420,13 +340,14 @@ void redistribuir(FILE *fArvore, int rrnPai, int separacao) {
         ++totalFilhos;
     }
  
+    // A ideia é a chave do meio subir para o pai como um novo separador; as demais são divididas igualmente
     int quantEsquerda = totalChaves/2;
     int tipo = esquerda.tipoNo, tipo2 = direita.tipoNo;
     esquerda = inicializaPagina();
     direita = inicializaPagina();
     esquerda.tipoNo = tipo;
     direita.tipoNo = tipo2;
- 
+
     for(int i = 0; i<quantEsquerda; ++i) {
         esquerda.chave[i] = chaves[i];
         esquerda.registro[i] = posicoes[i];
@@ -434,7 +355,7 @@ void redistribuir(FILE *fArvore, int rrnPai, int separacao) {
     }
     esquerda.filho[quantEsquerda] = filhos[quantEsquerda];
     esquerda.nroChaves = quantEsquerda;
- 
+
     pai.chave[separacao] = chaves[quantEsquerda];
     pai.registro[separacao] = posicoes[quantEsquerda];
  
@@ -454,19 +375,22 @@ void redistribuir(FILE *fArvore, int rrnPai, int separacao) {
     escreverNO(fArvore,rrnPai,pai);
 }
  
+// Função que concatena dois nós irmãos (usado quando nenhum dos irmãos tem chaves pra redistribuir)
 void concatenar(FILE *fArvore, ARVOREB_CABECALHO *cabecalho, int rrnPai, int separacao) {
     PAGINA pai = lerNO(fArvore, rrnPai);
     int rrnEsquerda = pai.filho[separacao], rrnDireita = pai.filho[separacao+1];
     PAGINA esquerda = lerNO(fArvore, rrnEsquerda), direita = lerNO(fArvore, rrnDireita);
- 
+
     int posicaoAtual = esquerda.nroChaves;
-    
+
+    // Descemos o separador do pai para o fim do nó esquerdo
     esquerda.chave[posicaoAtual] = pai.chave[separacao];
     esquerda.registro[posicaoAtual] = pai.registro[separacao];
     esquerda.filho[posicaoAtual+1] = direita.filho[0];
     ++esquerda.nroChaves;
     ++posicaoAtual;
-    
+
+    // Copiamos as chaves do nó direito pro esquerdo
     for(int i = 0; i<direita.nroChaves; ++i) {
         esquerda.chave[posicaoAtual] = direita.chave[i];
         esquerda.registro[posicaoAtual] = direita.registro[i];
@@ -474,10 +398,12 @@ void concatenar(FILE *fArvore, ARVOREB_CABECALHO *cabecalho, int rrnPai, int sep
         ++esquerda.nroChaves;
         ++posicaoAtual;
     }
- 
+
     escreverNO(fArvore, rrnEsquerda, esquerda);
+    // Como o nó direito foi pro esquerdo, liberamos o direito
     liberarPagina(fArvore, cabecalho, rrnDireita);
- 
+
+    // Removemos o separador do pai e deslocamos as chaves e filhos que estão à direita dele
     for(int i = separacao; i<pai.nroChaves-1; ++i) {
         pai.chave[i] = pai.chave[i+1];
         pai.registro[i] = pai.registro[i+1];
@@ -490,9 +416,11 @@ void concatenar(FILE *fArvore, ARVOREB_CABECALHO *cabecalho, int rrnPai, int sep
     escreverNO(fArvore, rrnPai, pai);
 }
  
+// Tratamos o underflow de um nó filho após uma remoção (nroChaves < minchaves)
 void trataUnderflow(FILE *fArvore, ARVOREB_CABECALHO *cabecalho, int rrnPai, int posFilho) {
     PAGINA pai = lerNO(fArvore, rrnPai);
- 
+
+    // Verificamos se o irmão direito tem chaves para "emprestar"
     if(posFilho<pai.nroChaves) {
         PAGINA direita = lerNO(fArvore, pai.filho[posFilho+1]);
         if(direita.nroChaves>minchaves) {
@@ -500,6 +428,7 @@ void trataUnderflow(FILE *fArvore, ARVOREB_CABECALHO *cabecalho, int rrnPai, int
             return;
         }
     }
+    // Se o direito não tinha, verificamos se o esquerdo tem chaves para "emprestar"
     if(posFilho>0) {
         PAGINA esquerda = lerNO(fArvore, pai.filho[posFilho-1]);
         if(esquerda.nroChaves>minchaves) {
@@ -507,20 +436,22 @@ void trataUnderflow(FILE *fArvore, ARVOREB_CABECALHO *cabecalho, int rrnPai, int
             return;
         }
     }
+    // Se nenhum deles tinha, concatenamos com o irmão esquerdo se ele existir; do contrário, concatenamos com o direito
     if(posFilho>0) {
         concatenar(fArvore, cabecalho, rrnPai, posFilho-1);
         return;
     }
-    
     concatenar(fArvore, cabecalho, rrnPai, posFilho);
 }
  
  
+// Removemos chave na árvore B a partir do nó de RRN dado de maneira recursiva
 bool removerChaveArvoreInterno(FILE *fArvore, ARVOREB_CABECALHO *cabecalho, int rrn, int chave) {
     int posicao;
     bool achou;
     PAGINA pagina = localizaNo(fArvore, rrn, chave, &posicao, &achou);
- 
+
+    // Já removemos se a chave estiver no nó folha
     if(isFolha(pagina)) {
         if(!achou) {
             return false;
@@ -532,22 +463,25 @@ bool removerChaveArvoreInterno(FILE *fArvore, ARVOREB_CABECALHO *cabecalho, int 
         }
         return false;
     }
- 
+
     if(achou) {
+        // Se encontramos a chave num nó interno, substituímos, em ordem, pelo sucessor
         int chave2,posicao2;
         buscarSucessor(fArvore, pagina.filho[posicao+1], &chave2, &posicao2);
         pagina.chave[posicao] = chave2;
         pagina.registro[posicao] = posicao2;
         escreverNO(fArvore, rrn, pagina);
+        // Removemos o sucessor da subtárvore direita e tratamos underflow caso assim seja necessário
         if(removerChaveArvoreInterno(fArvore, cabecalho, pagina.filho[posicao+1], chave2)) {
             trataUnderflow(fArvore, cabecalho, rrn, posicao+1);
         }
     } else {
+        // Se a chave não está no nó, descemos para o filho correto e tratamos underflow caso necessário
         if(removerChaveArvoreInterno(fArvore, cabecalho, pagina.filho[posicao], chave)) {
             trataUnderflow(fArvore, cabecalho, rrn, posicao);
         }
     }
- 
+
     pagina = lerNO(fArvore, rrn);
     if(pagina.nroChaves<minchaves) {
         return true;
@@ -555,13 +489,15 @@ bool removerChaveArvoreInterno(FILE *fArvore, ARVOREB_CABECALHO *cabecalho, int 
     return false;
 }
  
+// Função chamada pelo deleteFromWhere que cuida da remoção das chaves
 void removerChaveArvore(FILE *fArvore, ARVOREB_CABECALHO *cabecalho, int chave) {
     if(cabecalho->noRaiz == -1) {
         return;
     }
- 
+
     removerChaveArvoreInterno(fArvore, cabecalho, cabecalho->noRaiz, chave);
- 
+
+    // Transformamos o filho de uma raiz sem chaves após remoção na nova raiz ou liberamos se a árvore ficou vazia
     PAGINA raiz = lerNO(fArvore, cabecalho->noRaiz);
     if(raiz.nroChaves == 0) {
         if(!isFolha(raiz)) {
@@ -569,6 +505,7 @@ void removerChaveArvore(FILE *fArvore, ARVOREB_CABECALHO *cabecalho, int chave) 
             cabecalho->noRaiz = raiz.filho[0];
             liberarPagina(fArvore, cabecalho, antigaRaiz);
             PAGINA novaRaiz = lerNO(fArvore, cabecalho->noRaiz);
+            // Atualizamos o tipoNo da nova raiz de acordo com a estrutura
             if(isFolha(novaRaiz)) {
                 novaRaiz.tipoNo = -1;
             } else {
@@ -581,283 +518,28 @@ void removerChaveArvore(FILE *fArvore, ARVOREB_CABECALHO *cabecalho, int chave) 
         }
     }
 }
- 
-bool lerCabecalhoDados(FILE *fbin, CABECALHO *cab) {
-    fseek(fbin, 0, SEEK_SET);
-    fread(&cab->status, sizeof(char), 1, fbin);
-    if(cab->status == '0') {
+bool lerCabecalhoArvore(FILE *fArvore, ARVOREB_CABECALHO *cabecalho) {
+    fseek(fArvore, 0, SEEK_SET);
+    fread(&cabecalho->status, sizeof(char), 1, fArvore);
+    if(cabecalho->status == '0') {
         return false;
     }
-    cab->status = '0';
-    fseek(fbin, 0, SEEK_SET);
-    fwrite(&cab->status, sizeof(char), 1, fbin);
-    fseek(fbin, 1, SEEK_SET);
-    fread(&cab->topo, sizeof(int), 1, fbin);
-    fread(&cab->proxRRN, sizeof(int), 1, fbin);
-    fread(&cab->nroEstacoes, sizeof(int), 1, fbin);
-    fread(&cab->nroParesEstacao, sizeof(int), 1, fbin);
-    return true;
-}
- 
-void escreverCabecalhoDados(FILE *fbin, CABECALHO cab) {
-    fseek(fbin, 0, SEEK_SET);
-    fwrite(&cab.status, sizeof(char), 1, fbin);
-    fwrite(&cab.topo, sizeof(int), 1, fbin);
-    fwrite(&cab.proxRRN, sizeof(int), 1, fbin);
-    fwrite(&cab.nroEstacoes, sizeof(int), 1, fbin);
-    fwrite(&cab.nroParesEstacao, sizeof(int), 1, fbin);
-}
- 
-bool lerCabecalhoArvore(FILE *fArvore, ARVOREB_CABECALHO *cab) {
+    cabecalho->status = '0';
     fseek(fArvore, 0, SEEK_SET);
-    fread(&cab->status, sizeof(char), 1, fArvore);
-    if(cab->status == '0') {
-        return false;
-    }
-    cab->status = '0';
-    fseek(fArvore, 0, SEEK_SET);
-    fwrite(&cab->status, sizeof(char), 1, fArvore);
+    fwrite(&cabecalho->status, sizeof(char), 1, fArvore);
     fseek(fArvore, 1, SEEK_SET);
-    fread(&cab->noRaiz, sizeof(int), 1, fArvore);
-    fread(&cab->topo, sizeof(int), 1, fArvore);
-    fread(&cab->proxRRN, sizeof(int), 1, fArvore);
-    fread(&cab->nroNos, sizeof(int), 1, fArvore);
+    fread(&cabecalho->noRaiz, sizeof(int), 1, fArvore);
+    fread(&cabecalho->topo, sizeof(int), 1, fArvore);
+    fread(&cabecalho->proxRRN, sizeof(int), 1, fArvore);
+    fread(&cabecalho->nroNos, sizeof(int), 1, fArvore);
     return true;
 }
  
-void escreverCabecalhoArvore(FILE *fArvore, ARVOREB_CABECALHO cab) {
+void escreverCabecalhoArvore(FILE *fArvore, ARVOREB_CABECALHO cabecalho) {
     fseek(fArvore, 0, SEEK_SET);
-    fwrite(&cab.status, sizeof(char), 1, fArvore);
-    fwrite(&cab.noRaiz, sizeof(int), 1, fArvore);
-    fwrite(&cab.topo, sizeof(int), 1, fArvore);
-    fwrite(&cab.proxRRN, sizeof(int), 1, fArvore);
-    fwrite(&cab.nroNos, sizeof(int), 1, fArvore);
-}
-
-void executarRemocoes(FILE *fbin, FILE *fArvore, CABECALHO *cabDados, ARVOREB_CABECALHO *cabArvore, int n, char ***matrizes, int *nroLinhas) {
-    // Fazemos os OR's do DELETE
-    for(int i = 0; i<n; ++i) {
-        int quantAnds;
-        scanf("%d", &quantAnds);
-        char *condicoes[quantAnds][2];
-        lerCondicoesBusca(quantAnds, condicoes);
-
-        // Verificamos se o codEstacao está entre as condições de busca
-        bool temChave = false;
-        int chaveBusca = -1;
-        for(int j = 0; j<quantAnds; ++j) {
-            if((int)(intptr_t)condicoes[j][0] == 2) {
-                temChave = true;
-                chaveBusca = atoi(condicoes[j][1]);
-            }
-        }
-
-        // Se a busca tiver o codEstacao, recuperamos com o índice árvore-B
-        // Se for busca sem o campo chave, apenas percorremos o arquivo de dados de maneira sequencial
-        if(temChave) {
-            int offset = buscaChave(fArvore, chaveBusca, cabArvore->noRaiz);
-            if(offset != -1) {
-                int rrn = (offset - tamHeader) / tamRegistro;
-                fseek(fbin, offset, SEEK_SET);
-                char removido;
-                fread(&removido, sizeof(char), 1, fbin);
-                if(removido != '1') {
-                    REGISTRO registro;
-                    registro.removido = '0';
-                    bool ok = lerRegistroVerifica(fbin, &registro, quantAnds, condicoes);
-                    if(ok) {
-                        char marca = '1';
-                        fseek(fbin, offset, SEEK_SET);
-                        fwrite(&marca, sizeof(char), 1, fbin);
-                        fwrite(&cabDados->topo, sizeof(int), 1, fbin);
-                        cabDados->topo = rrn;
-                        atualizarRemocaoMatriz(cabDados, matrizes, nroLinhas, registro);
-                        removerChaveArvore(fArvore, cabArvore, registro.codEstacao);
-                    }
-                }
-            }
-        }
-        else {
-            removerSequencial(fbin, fArvore, cabDados, cabArvore, quantAnds, condicoes, matrizes, nroLinhas);
-        }
-        liberarCondicoes(quantAnds, condicoes);
-    }
-}
-
-void deleteFromWhereArvore(char *arquivoBin, char *arquivoArvore, int n, char ***matrizes, int *nroLinhas) {
-    // Processamento padrão de arquivos
-    FILE *fbin;
-    if(arquivoBin == NULL || !(fbin = fopen(arquivoBin, "r+b"))) {
-        printf("Falha no processamento do arquivo.\n");
-        return;
-    }
-    FILE *fArvore;
-    if(arquivoArvore == NULL || !(fArvore = fopen(arquivoArvore, "r+b"))) {
-        printf("Falha no processamento do arquivo.\n");
-        fclose(fbin);
-        return;
-    }
-    CABECALHO cabDados;
-    ARVOREB_CABECALHO cabArvore;
-    if(!lerCabecalhoDados(fbin, &cabDados) || !lerCabecalhoArvore(fArvore, &cabArvore)) {
-        printf("Falha no processamento do arquivo.\n");
-        fclose(fbin);
-        fclose(fArvore);
-        return;
-    }
-
-    // Garantimos que a matriz esteja atualizada de acordo
-    if(*nroLinhas <= 0) {
-        populaMatriz(matrizes, nroLinhas, fbin, cabDados.proxRRN);
-    }
-
-    executarRemocoes(fbin, fArvore, &cabDados, &cabArvore, n, matrizes, nroLinhas);
-    cabDados.status = '1';
-    escreverCabecalhoDados(fbin, cabDados);
-    cabArvore.status = '1';
-    escreverCabecalhoArvore(fArvore, cabArvore);
-    fclose(fbin);
-    fclose(fArvore);
-}
-
-void selectFromWhereArvore(char *arquivoBin, char *arquivoArvore, int quantBuscas) {
-    // Processamento padrão dos arquivos
-    FILE *fbin;
-    if(arquivoBin == NULL || !(fbin = fopen(arquivoBin, "rb"))){
-        printf("Falha no processamento do arquivo.\n");
-        return;
-    }
-    FILE *fArvore;
-    if(arquivoArvore == NULL || !(fArvore = fopen(arquivoArvore, "rb"))){
-        printf("Falha no processamento do arquivo.\n");
-        fclose(fbin);
-        return;
-    }
-
-    // Conferimos a consistência do arquivo
-    char status;
-    fseek(fbin, 0, SEEK_SET);
-    fread(&status, sizeof(char), 1, fbin);
-    if(status == '0'){
-        printf("Falha no processamento do arquivo.\n");
-        fclose(fbin);
-        fclose(fArvore);
-        return;
-    }
-    // Conferimos a consistência do índice e lemos o RRN do raiz
-    int noRaiz;
-    fseek(fArvore, 0, SEEK_SET);
-    fread(&status, sizeof(char), 1, fArvore);
-    if(status == '0'){
-        printf("Falha no processamento do arquivo.\n");
-        fclose(fbin);
-        fclose(fArvore);
-        return;
-    }
-    fread(&noRaiz, sizeof(int), 1, fArvore);
- 
-    // Fazemos os "OR's" do SELECT (isso é, cada uma das buscas)
-    for(int i = 0; i<quantBuscas; ++i) {
-        int quantAnds = 0;
-        scanf("%d", &quantAnds);
-        char *condicoes[quantAnds][2];
-        lerCondicoesBusca(quantAnds, condicoes);
- 
-        // Verificamos se o codEstacao está entre as condições de busca
-        bool temChave = false;
-        int chaveBusca = -1;
-        for(int j = 0; j<quantAnds; ++j) {
-            if((int)(intptr_t)condicoes[j][0] == 2) {
-                temChave = true;
-                chaveBusca = strcmp(condicoes[j][1], "NULO")==0 ? -1 : atoi(condicoes[j][1]);
-            }
-        }
- 
-        bool encontrou = 0;
-        // Se a busca tiver o codEstacao, recuperamos com o índice árvore-B
-        // Se for busca sem o campo chave, apenas percorremos o arquivo de dados de maneira sequencial, como no selectFromWhere
-        if(temChave) {
-            int offset = buscaChave(fArvore, chaveBusca, noRaiz);
-            if(offset != -1) {
-                fseek(fbin, offset, SEEK_SET);
-                char removido;
-                fread(&removido, sizeof(char), 1, fbin);
-                // Pulamos registros logicamente removidos
-                if(removido != '1') {
-                    REGISTRO registro;
-                    registro.removido = '0';
-                    bool ok = lerRegistroVerifica(fbin, &registro, quantAnds, condicoes);
-                    if(ok) {
-                        encontrou = 1;
-                        imprimeRegistro(registro);
-                    }
-                }
-            }
-        }
-        else {
-            encontrou = buscaSequencial(fbin, condicoes, quantAnds, false);
-        }
- 
-        if(!encontrou) {
-            printf("Registro inexistente.\n");
-        }
-        liberarCondicoes(quantAnds, condicoes);
-        printf("\n");
-    }
-    fclose(fbin);
-    fclose(fArvore);
-}
-
-
- void atualizarRemocaoMatriz(CABECALHO *cabDados, char ***matrizes, int *nroLinhas, REGISTRO registro) {
-    char codEstacaoAnt[11], codProxAnt[11];
-    if(registro.codEstacao == -1) {
-        strcpy(codEstacaoAnt, "");
-    } else {
-        sprintf(codEstacaoAnt, "%d", registro.codEstacao);
-    }
-    if(registro.codProxEstacao == -1) {
-        strcpy(codProxAnt, "");
-    } else {
-        sprintf(codProxAnt, "%d", registro.codProxEstacao);
-    }
-    for(int k = 0; k<*nroLinhas; ++k) {
-        if(!strcmp(matrizes[0][k], registro.nomeEstacao) && !strcmp(matrizes[1][k], codEstacaoAnt) && !strcmp(matrizes[2][k], codProxAnt)) {
-            strcpy(matrizes[0][k], "");
-            strcpy(matrizes[1][k], "");
-            strcpy(matrizes[2][k], "");
-            break;
-        }
-    }
-    if(!duplicidadeEstacoes(matrizes, nroLinhas, registro.nomeEstacao)) {
-        --cabDados->nroEstacoes;
-    }
-    if(!duplicidadeParesEstacao(matrizes, nroLinhas, codProxAnt, codEstacaoAnt)) {
-        --cabDados->nroParesEstacao;
-    }
-}
-
-void removerSequencial(FILE *fbin, FILE *fArvore, CABECALHO *cabDados, ARVOREB_CABECALHO *cabArvore, int quantAnds, char *condicoes[][2], char ***matrizes, int *nroLinhas) {
-    int pos = 0;
-    char removido;
-    fseek(fbin, tamHeader, SEEK_SET);
-    while(fread(&removido, sizeof(char), 1, fbin) == 1) {
-        if(removido != '1') {
-            REGISTRO registro;
-            registro.removido = '0';
-            if(lerRegistroVerifica(fbin, &registro, quantAnds, condicoes)) {
-                char marca = '1';
-                fseek(fbin, tamHeader + pos*tamRegistro, SEEK_SET);
-                fwrite(&marca, sizeof(char), 1, fbin);
-                fwrite(&cabDados->topo, sizeof(int), 1, fbin);
-                cabDados->topo = pos;
-                atualizarRemocaoMatriz(cabDados, matrizes, nroLinhas, registro);
-                if(fArvore != NULL) {
-                    removerChaveArvore(fArvore, cabArvore, registro.codEstacao);
-                }
-            }
-        }
-        ++pos;
-        fseek(fbin, tamHeader + pos*tamRegistro, SEEK_SET);
-    }
+    fwrite(&cabecalho.status, sizeof(char), 1, fArvore);
+    fwrite(&cabecalho.noRaiz, sizeof(int), 1, fArvore);
+    fwrite(&cabecalho.topo, sizeof(int), 1, fArvore);
+    fwrite(&cabecalho.proxRRN, sizeof(int), 1, fArvore);
+    fwrite(&cabecalho.nroNos, sizeof(int), 1, fArvore);
 }

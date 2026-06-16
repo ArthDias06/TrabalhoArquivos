@@ -1,22 +1,13 @@
 #ifndef CRUD_H
-#include<stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
-#include <stdint.h>
-#include "fornecidas.h"
-#include "registro.h"
-#include "matriz.h"
-#include "util.h"
-#include "arvoreb.h"
-
 #define CRUD_H
 
-    bool createTable(char *, char *, char ***, int *);
-    bool insertInto(char *, int,  char ***, int *, bool, char*);
-    bool update(char *, int, char ***, int *);
-    void selectFromWhere(char *, int, bool);
-    bool deleteFromWhere(char *,int, char ***, int *);
+#include "crud_sequencial.h"
+#include "crud_arvoreb.h"
+
+// Esse arquivo foi feito mais para servir para funções específicas do CRUD que são utilizadas por mais de uma estrutura
+// Na implementação atual, apenas duas função se encaixam, mas a utilidade desse .c pode aumentar conforme o projeto escala
+
+void removerSequencial(FILE *, FILE *, CABECALHO *, ARVOREB_CABECALHO *, int, char *[][2], char ***, int *);
+bool buscaSequencial(FILE *, char *[][2], int, bool);
 
 #endif

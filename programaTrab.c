@@ -79,9 +79,11 @@ int main(){
             //Caso 10: Delete da árvore-B
             case 10:
                 scanf("%100s %100s %d", arquivoBin, arquivoArvore, &n);
-                deleteFromWhereArvore(arquivoBin, arquivoArvore, n, matrizes, &nroLinhas);
-                BinarioNaTela(arquivoBin);
-                BinarioNaTela(arquivoArvore);
+                erro = deleteFromWhereArvore(arquivoBin, arquivoArvore, n, matrizes, &nroLinhas);
+                if(!erro) {
+                    BinarioNaTela(arquivoBin);
+                    BinarioNaTela(arquivoArvore);
+                }
                 break;
         }
     }

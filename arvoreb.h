@@ -13,6 +13,8 @@
 #include"registro.h"    
 #include "fornecidas.h"
 
+// Esse arquivo contém as funções internas das operações do CRUD aplicadas na árvore B
+
 typedef struct cabecalho_arvore{
     char status;
     int noRaiz;
@@ -35,8 +37,6 @@ bool lerCabecalhoArvore(FILE *, ARVOREB_CABECALHO *);
 void escreverCabecalhoArvore(FILE *, ARVOREB_CABECALHO);
 void removeChaveArvore(FILE *, ARVOREB_CABECALHO *, int);
 void criaRaiz(FILE *, int, int, int, ARVOREB_CABECALHO *);
-bool createIndex(char *, char *);
-int busca(FILE *, int, int);
 PAGINA localizaNo(FILE *, int, int, int *, bool *);
 int buscaChave(FILE *, int, int);
 PAGINA ins_in_page(int, int, int, PAGINA);
@@ -53,10 +53,4 @@ void redistribui(FILE *, int, int);
 void concatena(FILE *, ARVOREB_CABECALHO *, int, int);
 void trataUnderflow(FILE *, ARVOREB_CABECALHO *, int, int);
 bool removeChaveArvoreInterno(FILE *, ARVOREB_CABECALHO *, int, int);
-bool lerCabecalhoDados(FILE *, CABECALHO *);
-void escreverCabecalhoDados(FILE *, CABECALHO);
-void executaRemocoes(FILE *, FILE *, CABECALHO *, ARVOREB_CABECALHO *, int, char ***, int *);
-void deleteFromWhereArvore(char *, char *, int, char ***, int *);
-void selectFromWhereArvore(char *, char *, int);
-void removerSequencial(FILE *, FILE *, CABECALHO *, ARVOREB_CABECALHO *, int, char *[][2], char ***, int *);
 #endif

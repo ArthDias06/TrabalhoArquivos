@@ -10,7 +10,7 @@
 //Função para atualizar o cabecalho de um arquivo ao final da escrita dele
 void atualizarCabecalho(CABECALHO cabecalho, FILE* fbin){
     if(fbin == NULL){
-        printf("Falha no processamento do arquivo");
+        printf("Falha no processamento do arquivo.\n");
         return;
     }
     fseek(fbin, 0, SEEK_SET);
@@ -239,30 +239,4 @@ void imprimeRegistro(REGISTRO registro) {
     } else {
         printf("%d\n", registro.codEstIntegra);
     }
-}
-
-bool buscaSequencial(FILE *fbin, char *condicoes[][2], int quantAnds, bool pararNoPrimeiro) {
-    bool encontrou = false;
-    int cont = 0;
-    fseek(fbin, tamHeader, SEEK_SET);
-    char removido;
-    while(fread(&removido, 1, 1, fbin) == 1) {
-        if(removido == '1') {
-            ++cont;
-            fseek(fbin, tamRegistro - 1, SEEK_CUR);
-            continue;
-        }
-        REGISTRO registro;
-        registro.removido = '0';
-        bool ok = lerRegistroVerifica(fbin, &registro, quantAnds, condicoes);
-        if(ok) {
-            encontrou = true;
-            imprimeRegistro(registro);
-            if(pararNoPrimeiro) {
-                break;
-            }
-        }
-        finalizarBusca(fbin, &cont);
-    }
-    return encontrou;
 }
