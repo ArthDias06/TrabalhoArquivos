@@ -8,7 +8,7 @@ int main(){
     int operacao, nroLinhas = 0, n;
     char arquivoBin[101];
     char arquivoBin2[101];
-    //char nomeCampo[15];
+    char nomeCampo[15];
     char arquivoCSV[101];
     char arquivoArvore[101];
     char*** matrizes = criaMatriz();
@@ -97,12 +97,13 @@ int main(){
                 scanf("%100s %*s %100s %*s %100s", arquivoBin, arquivoBin2, arquivoArvore);
                 joinUsandoIndice(arquivoBin, arquivoBin2, arquivoArvore);
                 break;
-            /*case 13:
+            // Caso 13: ORDER BY
+            case 13:
                 scanf("%100s %14s %100s", arquivoBin, nomeCampo, arquivoBin2);
                 erro = orderBy(arquivoBin, nomeCampo, arquivoBin2);
                 if(erro)
                     BinarioNaTela(arquivoBin2);
-                break;*/
+                break;
         }
     }
     //Cálculo de quanta memória foi criada para armazenar a matriz

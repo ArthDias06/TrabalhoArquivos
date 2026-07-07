@@ -146,6 +146,7 @@ bool insertInto(char* arquivoBin, int nroInsert, char*** matrizes, int* nroLinha
     CABECALHO cabecalho;
     if(!lerCabecalho(fbin, &cabecalho)){
         printf("Falha no processamento do arquivo.\n");
+        fclose(fbin);
         return 1;
     }
     ARVOREB_CABECALHO arvoreCabecalho;
@@ -280,6 +281,7 @@ bool update(char *arquivoBin, int nroUpdate, char ***matrizes, int* nroLinhas){
     CABECALHO cabecalho;
     if(!lerCabecalho(fbin, &cabecalho)){
         printf("Falha no processamento do arquivo.\n");
+        fclose(fbin);
         return true;
     }
 
@@ -494,6 +496,7 @@ void selectFromWhere(char *arquivoBin, int quantBuscas, bool temWhere) {
     fread(&status, sizeof(char), 1, fbin);
     if(status =='0'){
         printf("Falha no processamento do arquivo.\n");
+        fclose(fbin);
         return;
     }
     // Fazemos os "OR's" do SELECT (isso é, cada uma das buscas)
@@ -539,6 +542,7 @@ bool deleteFromWhere(char *arquivoBin, int quantRemocoes, char ***matrizes, int 
     CABECALHO cabecalho;
     if(!lerCabecalho(fbin, &cabecalho)){
         printf("Falha no processamento do arquivo.\n");
+        fclose(fbin);
         return 1;
     }
 

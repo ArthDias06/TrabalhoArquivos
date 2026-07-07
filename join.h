@@ -11,4 +11,6 @@
 
     void joinUsandoIndice(char*, char*, char*);
 
+    bool orderBy(char*, char*, char*);
+
 #endif
