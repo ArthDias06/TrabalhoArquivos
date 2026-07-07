@@ -49,4 +49,6 @@
     void imprimeRegistro(REGISTRO registro);
     bool buscaSequencial(FILE *fbin, char *condicoes[][2], int quantAnds, bool pararNoPrimeiro);
 
+    void lerRegistro(FILE* fbin, REGISTRO* registro);
+
 #endif

@@ -117,7 +117,7 @@ void finalizarBusca(FILE *fbin, int *cont) {
     fseek(fbin, tamHeader + (*cont * tamRegistro), SEEK_SET);
 }
 
-bool lerRegistroVerifica(FILE *fbin, REGISTRO *registro, int quantAnds, char *condicoes[][2]) {
+void lerRegistro(FILE *fbin, REGISTRO *registro){
     fread(&registro->proximo, sizeof(int), 1, fbin);
     fread(&registro->codEstacao, sizeof(int), 1, fbin);
     fread(&registro->codLinha, sizeof(int), 1, fbin);
@@ -137,7 +137,10 @@ bool lerRegistroVerifica(FILE *fbin, REGISTRO *registro, int quantAnds, char *co
         fread(registro->nomeLinha, sizeof(char), registro->tamNomeLinha, fbin);
     }
     registro->nomeLinha[registro->tamNomeLinha] = '\0';
+}
 
+bool lerRegistroVerifica(FILE *fbin, REGISTRO *registro, int quantAnds, char *condicoes[][2]) {
+    lerRegistro(fbin, registro);
 
     bool ok = 1;
     for(int j=0; j<quantAnds && ok; ++j) {

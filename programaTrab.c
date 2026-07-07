@@ -2,10 +2,13 @@
 //Gabriel Carraro Salzedas - 16827905
 
 #include "crud.h"
+#include "join.h"
 
 int main(){
     int operacao, nroLinhas = 0, n;
     char arquivoBin[101];
+    char arquivoBin2[101];
+    //char nomeCampo[15];
     char arquivoCSV[101];
     char arquivoArvore[101];
     char*** matrizes = criaMatriz();
@@ -85,6 +88,21 @@ int main(){
                     BinarioNaTela(arquivoArvore);
                 }
                 break;
+            //
+            case 11:
+                scanf("%100s %*s %100s %*s", arquivoBin, arquivoBin2);
+                joinNestedLoop(arquivoBin, arquivoBin2);
+                break;
+            case 12:
+                scanf("%100s %*s %100s %*s %100s", arquivoBin, arquivoBin2, arquivoArvore);
+                joinUsandoIndice(arquivoBin, arquivoBin2, arquivoArvore);
+                break;
+            /*case 13:
+                scanf("%100s %14s %100s", arquivoBin, nomeCampo, arquivoBin2);
+                erro = orderBy(arquivoBin, nomeCampo, arquivoBin2);
+                if(erro)
+                    BinarioNaTela(arquivoBin2);
+                break;*/
         }
     }
     //Cálculo de quanta memória foi criada para armazenar a matriz
