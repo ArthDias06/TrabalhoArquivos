@@ -88,11 +88,12 @@ int main(){
                     BinarioNaTela(arquivoArvore);
                 }
                 break;
-            //
+            // Case 11: Join com brute force
             case 11:
                 scanf("%100s %*s %100s %*s", arquivoBin, arquivoBin2);
                 joinNestedLoop(arquivoBin, arquivoBin2);
                 break;
+            // Case 12: Join de loop único
             case 12:
                 scanf("%100s %*s %100s %*s %100s", arquivoBin, arquivoBin2, arquivoArvore);
                 joinUsandoIndice(arquivoBin, arquivoBin2, arquivoArvore);
@@ -103,6 +104,11 @@ int main(){
                 erro = orderBy(arquivoBin, nomeCampo, arquivoBin2);
                 if(erro)
                     BinarioNaTela(arquivoBin2);
+                break;
+            //Case 14: Join ordenação-intercalação
+            case 14:
+                scanf("%100s %*s %100s %*s", arquivoBin, arquivoBin2);
+                joinIntercalacao(arquivoBin, arquivoBin2);
                 break;
         }
     }

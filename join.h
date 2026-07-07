@@ -13,4 +13,6 @@
 
     bool orderBy(char*, char*, char*);
 
+    void joinIntercalacao(char*, char*);
+
 #endif

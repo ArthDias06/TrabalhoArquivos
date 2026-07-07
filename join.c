@@ -201,13 +201,6 @@ bool orderBy(char* arquivoBin, char* campo, char* arquivoOrd){
     fread(&cabecalho.nroEstacoes, sizeof(int), 1, fbin1);
     fread(&cabecalho.nroParesEstacao, sizeof(int), 1, fbin1);
 
-    FILE *fbin2;
-    if (arquivoOrd == NULL || !(fbin2 = fopen(arquivoOrd, "wb"))) {
-        printf("Falha no processamento do arquivo.\n");
-        fclose(fbin1);
-        return false;
-    }
-
     // Definimos qual campo será usado na ordenação (considerando somente codEstacao e codProxEstacao)
     campoOrd = strcmp(campo, "codEstacao") == 0 ? 2 : 4;
 
@@ -218,7 +211,6 @@ bool orderBy(char* arquivoBin, char* campo, char* arquivoOrd){
         if(registros == NULL){
             printf("Falha no processamento do arquivo.\n");
             fclose(fbin1);
-            fclose(fbin2);
             return false;
         }
     }
@@ -242,8 +234,16 @@ bool orderBy(char* arquivoBin, char* campo, char* arquivoOrd){
     // Ordenamos os registros usando qsort (como especificado para usar algum da biblioteca do C)
     qsort(registros, total, sizeof(REGISTRO), comparaOrdenacao);
 
+    //Só agora abrimos o segundo arquivo, útil para o caso em que arquivo1 == arquivo2
+    FILE *fbin2;
+    if (arquivoOrd == NULL || !(fbin2 = fopen(arquivoOrd, "wb"))) {
+        printf("Falha no processamento do arquivo.\n");
+        fclose(fbin1);
+        return false;
+    }
+
     // Escrevemos o cabeçalho do arquivo ordenado, sem a pilha de removidos e com o novo proxRRN
-    cabecalho.status = '1';
+    cabecalho.status = '0';
     cabecalho.topo = -1;
     cabecalho.proxRRN = total;
     atualizarCabecalho(cabecalho, fbin2);
@@ -252,9 +252,50 @@ bool orderBy(char* arquivoBin, char* campo, char* arquivoOrd){
     for(int i = 0; i < total; ++i){
         escreverRegistro(registros[i], fbin2);
     }
+    cabecalho.status = '1';
+    atualizarCabecalho(cabecalho, fbin2);
 
     free(registros);
     fclose(fbin1);
     fclose(fbin2);
     return true;
+}
+
+void joinIntercalacao(char* arquivoBin1, char* arquivoBin2){
+    bool erro = orderBy(arquivoBin1, "codProxEstacao", "arquivoOrd1.bin");
+    if(erro){
+        printf("Falha no processamento do arquivo.\n");
+        return;
+    }
+    erro = orderBy(arquivoBin2, "codEstacao", "arquivoOrd2.bin");
+    if(erro){
+        printf("Falha no processamento do arquivo.\n");
+        return;
+    }
+
+    FILE *fbin1;
+    if (!(fbin1 = fopen("arquivoOrd1.bin", "rb"))) {
+        printf("Falha no processamento do arquivo.\n");
+        return;
+    }
+    char status;
+    fread(&status, sizeof(char), 1, fbin1);
+    if(status == '0'){
+        printf("Falha no processamento do arquivo.\n");
+        fclose(fbin1);
+        return;
+    }
+    FILE *fbin2;
+    if (!(fbin2 = fopen("arquivoOrd2.bin", "rb"))) {
+        printf("Falha no processamento do arquivo.\n");
+        fclose(fbin1);
+        return;
+    }
+    fread(&status, sizeof(char), 1, fbin2);
+    if(status == '0'){
+        printf("Falha no processamento do arquivo.\n");
+        fclose(fbin2);
+        fclose(fbin1);
+        return;
+    }
 }
