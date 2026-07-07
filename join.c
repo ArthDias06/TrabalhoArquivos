@@ -1,6 +1,8 @@
 #include "join.h"
 
+//Função de junção por brute force
 void joinNestedLoop(char* arqEntrada1, char*arqEntrada2){
+    //Abertura dos arquivos e verificação das consistências
     FILE *fbin1;
     if (arqEntrada1 == NULL || !(fbin1 = fopen(arqEntrada1, "rb"))) {
         printf("Falha no processamento do arquivo.\n");
@@ -29,10 +31,11 @@ void joinNestedLoop(char* arqEntrada1, char*arqEntrada2){
 
     char removido;
     int cont=1;
+    //Guarda se houve pelo menos um registro existente
     bool flag = false;
     REGISTRO registro1, registro2;
+    //Pula o cabeçalho de ambos arquivos
     fseek(fbin1, tamHeader-1, SEEK_CUR);
-    fseek(fbin2, tamHeader-1, SEEK_CUR);
     while(fread(&removido, 1, 1, fbin1) == 1) {
         // Pulamos registros logicamente removidos
         if(removido == '1') {
@@ -40,9 +43,12 @@ void joinNestedLoop(char* arqEntrada1, char*arqEntrada2){
             continue;
         }
         lerRegistro(fbin1, &registro1);
+        //Vai para o próximo registro
         fseek(fbin1, tamHeader+cont*tamRegistro, SEEK_SET);
         cont++;
+        //Posiciona o fbin2 no início dos registros do segundo arquivo
         fseek(fbin2, tamHeader, SEEK_SET);
+        //Inicializa o segundo contador
         int cont2=1;
         while(fread(&removido, 1, 1, fbin2) == 1){
             if(removido == '1') {
@@ -52,20 +58,27 @@ void joinNestedLoop(char* arqEntrada1, char*arqEntrada2){
             lerRegistro(fbin2, &registro2);
             fseek(fbin2, tamHeader+cont2*tamRegistro, SEEK_SET);
             cont2++;
+            //Caso o codProxEstacao do registro1 seja igual ao codEstcao do registro2
             if(registro2.codEstacao == registro1.codProxEstacao){
+                //Flag vira true, pois existe um registro
                 flag = true;
+                //As informações são mostradas
                 printf("%d %s %s %d %s\n", registro1.codEstacao, registro1.nomeEstacao, registro1.nomeLinha, registro1.codProxEstacao, registro2.nomeEstacao);
             }
         }
     }
+    //Se nenhum registro exixstir, retorna para o usuário
     if(!flag){
         printf("Registro inexistente.\n");
     }
+    //Fecha as streams
     fclose(fbin1);
     fclose(fbin2);
 }
 
+//Junção de loop único
 void joinUsandoIndice(char *arqEntrada1, char *arqEntrada2, char *arqArvore){
+    //Abertura das streams e verificação das consistências
     FILE *fbin1;
     if (arqEntrada1 == NULL || !(fbin1 = fopen(arqEntrada1, "rb"))) {
         printf("Falha no processamento do arquivo.\n");
@@ -113,6 +126,7 @@ void joinUsandoIndice(char *arqEntrada1, char *arqEntrada2, char *arqArvore){
     REGISTRO registro1, registro2;
     fseek(fbin1, tamHeader-1, SEEK_CUR);
     fseek(fbin2, tamHeader-1, SEEK_CUR);
+    //Leitura do nó raiz da árvore B
     fread(&noRaiz, sizeof(int), 1, farvore);
     while(fread(&removido, 1, 1, fbin1) == 1) {
         if(removido == '1'){
@@ -122,14 +136,18 @@ void joinUsandoIndice(char *arqEntrada1, char *arqEntrada2, char *arqArvore){
         lerRegistro(fbin1, &registro1);
         fseek(fbin1, tamHeader+cont*tamRegistro, SEEK_SET);
         cont++;
+        //Posiciona a stream da árvore no início dos registros
         fseek(farvore, 17, SEEK_SET);
+        //Verifica a existência da chave
         int offset = buscarChave(farvore, registro1.codProxEstacao, noRaiz);
+        //offset == -1, não há a chave
         if(offset == -1){
             continue;
         }
+        //Vai até o registro com a chave
         fseek(fbin2, offset, SEEK_SET);
         fread(&removido, sizeof(char), 1, fbin2);
-        //Verificação a mais, caso registros sejam retirados após a criação do índice, pode estar desatualizado
+        //Verificação se o registro existe
         if(removido == '1'){
             continue;
         }
@@ -261,8 +279,11 @@ bool orderBy(char* arquivoBin, char* campo, char* arquivoOrd){
     return true;
 }
 
+//Junção por ordenação-intercalação
 void joinIntercalacao(char* arquivoBin1, char* arquivoBin2){
+    //Ordena os arquivos primeiro
     if(!orderBy(arquivoBin1, "codProxEstacao", arquivoBin1) || !orderBy(arquivoBin2, "codEstacao", arquivoBin2)){
+        //Sem necessidade de mensagem de erro aqui, pois seria printado na função orderBy
         return;
     }
 
@@ -297,10 +318,12 @@ void joinIntercalacao(char* arquivoBin1, char* arquivoBin2){
     REGISTRO registro1, registro2;
     bool flag = false;
 
+    //Leitura de proxRRN1 e proxRRN2
     fseek(fbin1, sizeof(int), SEEK_CUR);
     fread(&proxRRN1, sizeof(int), 1, fbin1);
     fseek(fbin2, sizeof(int), SEEK_CUR);
     fread(&proxRRN2, sizeof(int), 1, fbin2);
+    //Percorre ambos arquivos até que um deles chegue ao fim
     while(contProxEstacao < proxRRN1 && contEstacao < proxRRN2){
         fseek(fbin1, tamHeader+1+contProxEstacao*tamRegistro, SEEK_SET);
         fseek(fbin2, tamHeader+1+contEstacao*tamRegistro, SEEK_SET);
@@ -309,8 +332,12 @@ void joinIntercalacao(char* arquivoBin1, char* arquivoBin2){
         if(registro1.codProxEstacao == registro2.codEstacao){
             flag = true;
             printf("%d %s %s %d %s\n", registro1.codEstacao, registro1.nomeEstacao, registro1.nomeLinha, registro1.codProxEstacao, registro2.nomeEstacao);
+            //Se os dois foram iguais, apenas o codProxEstacao aumenta, pois como ele
+            //não é uma chave única, ela pode se repetir, então poderiam haver dois
+            //codEstacao's diferentes com o mesmo codProxEstacao, isso evita qualquer perda de informação.
             contProxEstacao++;
         }
+        //Aumenta o contador daquele que representa o campo de menor valor
         else if(registro1.codProxEstacao > registro2.codEstacao){
             contEstacao++;
         }else{
