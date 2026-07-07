@@ -262,19 +262,12 @@ bool orderBy(char* arquivoBin, char* campo, char* arquivoOrd){
 }
 
 void joinIntercalacao(char* arquivoBin1, char* arquivoBin2){
-    bool erro = orderBy(arquivoBin1, "codProxEstacao", "arquivoOrd1.bin");
-    if(erro){
-        printf("Falha no processamento do arquivo.\n");
-        return;
-    }
-    erro = orderBy(arquivoBin2, "codEstacao", "arquivoOrd2.bin");
-    if(erro){
-        printf("Falha no processamento do arquivo.\n");
+    if(!orderBy(arquivoBin1, "codProxEstacao", arquivoBin1) || !orderBy(arquivoBin2, "codEstacao", arquivoBin2)){
         return;
     }
 
     FILE *fbin1;
-    if (!(fbin1 = fopen("arquivoOrd1.bin", "rb"))) {
+    if (!(fbin1 = fopen(arquivoBin1, "rb"))) {
         printf("Falha no processamento do arquivo.\n");
         return;
     }
@@ -286,7 +279,7 @@ void joinIntercalacao(char* arquivoBin1, char* arquivoBin2){
         return;
     }
     FILE *fbin2;
-    if (!(fbin2 = fopen("arquivoOrd2.bin", "rb"))) {
+    if (!(fbin2 = fopen(arquivoBin2, "rb"))) {
         printf("Falha no processamento do arquivo.\n");
         fclose(fbin1);
         return;
@@ -298,4 +291,35 @@ void joinIntercalacao(char* arquivoBin1, char* arquivoBin2){
         fclose(fbin1);
         return;
     }
+
+    int contProxEstacao=0, contEstacao=0;
+    int proxRRN1, proxRRN2;
+    REGISTRO registro1, registro2;
+    bool flag = false;
+
+    fseek(fbin1, sizeof(int), SEEK_CUR);
+    fread(&proxRRN1, sizeof(int), 1, fbin1);
+    fseek(fbin2, sizeof(int), SEEK_CUR);
+    fread(&proxRRN2, sizeof(int), 1, fbin2);
+    while(contProxEstacao < proxRRN1 && contEstacao < proxRRN2){
+        fseek(fbin1, tamHeader+1+contProxEstacao*tamRegistro, SEEK_SET);
+        fseek(fbin2, tamHeader+1+contEstacao*tamRegistro, SEEK_SET);
+        lerRegistro(fbin1, &registro1);
+        lerRegistro(fbin2, &registro2);
+        if(registro1.codProxEstacao == registro2.codEstacao){
+            flag = true;
+            printf("%d %s %s %d %s\n", registro1.codEstacao, registro1.nomeEstacao, registro1.nomeLinha, registro1.codProxEstacao, registro2.nomeEstacao);
+            contProxEstacao++;
+        }
+        else if(registro1.codProxEstacao > registro2.codEstacao){
+            contEstacao++;
+        }else{
+            contProxEstacao++;
+        }
+    }
+    if(!flag){
+        printf("Registro inexistente.\n");
+    }
+    fclose(fbin1);
+    fclose(fbin2);
 }
