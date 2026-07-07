@@ -147,7 +147,7 @@ void joinUsandoIndice(char *arqEntrada1, char *arqEntrada2, char *arqArvore){
     fclose(farvore);
 }
 
-static int campoOrd;
+int campoOrd;
 
 // Comparador para ordenar os registros de forma crescente pelo campo de ordenação
 int comparaOrdenacao(const void *a, const void *b){
